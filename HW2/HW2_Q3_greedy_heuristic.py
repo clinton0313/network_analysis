@@ -3,20 +3,20 @@ import os, matplotlib
 from igraph import Graph
 import igraph as ig
 import numpy as np
-from itertools import combinations
+from itertools import combinations_with_replacement, combinations
 from typing import Iterable
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 #%%
-def get_group_degree(group, partition, edge_list):
+def get_group_degree(graph:Graph, group, partition):
     k = 0
-    for i, j in edge_list:
-        if partition[i] == group or partition[j] == group:
-            k += 1
+    for i, community in enumerate(partition):
+        if community == group:
+            k += len(graph.incident(i, mode="all"))
     return k
 
-def log_likelihood(edge_list, partition:list, mode="DCSBM", directed=False):
+def log_likelihood(graph:Graph, partition:list, directed=False):
     '''
     Computes the log likelihood
     Args:
@@ -28,29 +28,40 @@ def log_likelihood(edge_list, partition:list, mode="DCSBM", directed=False):
     '''
     groups = set(partition)
     likelihoods = []
+    #Sets edges based on if graph is directed or not
     if directed:
-        m = len(edge_list)
+        m = len(graph.get_edgelist())
     elif directed == False:
-        m = 2 * len(edge_list)
-    for u, v in combinations(groups, 2):
-        N = partition.count(u) * partition.count(v)
+        m = 2 * len(graph.get_edgelist())
+
+    #For all unique combinations of groups
+    for u, v in combinations_with_replacement(groups, 2):
+        #Get either Nuu or Nuv
+        if u == v:
+            N = partition.count(u) * (partition.count(u) - 1)
+        else:
+            N = partition.count(u) * partition.count(v)
+        
+        #Get Euv
         E = 0
-        for i, j in edge_list:
+        for i, j in graph.get_edgelist():
             if (partition[i] == u and partition[j] == v) or (partition[i] == v and partition[j] == u):
                 E +=1
-        if mode == "SBM":
-            l = E * np.log(E/N) + (N - E) * np.log((N-E)/N)
-        elif mode == "DCSBM":
-            ku = get_group_degree(u, partition, edge_list)
-            kv = get_group_degree(v, partition, edge_list)
-            if E == 0:
-                l = 0
-            else:
-                l = (E/(m)) * np.log((E/(m))/((ku * kv)/(m**2)))
+        
+        #Compute group degrees
+        ku = get_group_degree(graph, u, partition)
+        kv = get_group_degree(graph, v, partition)
+
+        #Compute log likelihood for this combination of uv
+        if E == 0:
+            l = 0
+        else:
+            l = E/m * np.log(E * m/(ku * kv))
         likelihoods.append(l)
+    #Return the sum of logs
     return np.sum(likelihoods)
             
-def makeAMove(graph:Graph, z:list, c:int, is_frozen:list, mode:str, directed=False):
+def makeAMove(graph:Graph, z:list, c:int, is_frozen:list, directed=False):
     '''
     One step of a phase in the greedy heuristic.
     Args:
@@ -73,14 +84,14 @@ def makeAMove(graph:Graph, z:list, c:int, is_frozen:list, mode:str, directed=Fal
                     z_temp = z.copy()
                     z_temp[i] = group
                     node_likelihoods.append((z_temp, 
-                        log_likelihood(graph.get_edgelist(), z_temp, mode, directed=directed)))
+                        log_likelihood(graph, z_temp, directed=directed)))
             likelihoods.append(max(node_likelihoods, key=lambda x: x[1]))
     
     z_news, likelihood_news = zip(*likelihoods)
     likelihoods = zip(range(len(z_news)), z_news, likelihood_news)
     return max(likelihoods, key=lambda x: x[2])
 
-def runOnePhase(graph:Graph, z:list, c:int, mode:str, directed=False):
+def runOnePhase(graph:Graph, z:list, c:int, directed=False):
     '''
     Runs one phase of the greedy heuristic. 
     Args:
@@ -93,12 +104,12 @@ def runOnePhase(graph:Graph, z:list, c:int, mode:str, directed=False):
     '''
     n = len(z)
     is_frozen = [False for _ in range(n)]
-    l0 = log_likelihood(g.get_edgelist(), z, mode) #Should I have this initial likelihood?
+    l0 = log_likelihood(graph, z) #Should I have this initial likelihood?
     likelihood_list = []
     h = 0
 
     for t in range(n):
-        node_index, z_i, likelihood = makeAMove(graph, z, c, is_frozen, mode = mode, directed=directed)
+        node_index, z_i, likelihood = makeAMove(graph, z, c, is_frozen, directed=directed)
         is_frozen[node_index] = True
         if likelihood_list == []:
             z_star = z_i
@@ -112,7 +123,7 @@ def runOnePhase(graph:Graph, z:list, c:int, mode:str, directed=False):
         z_star = z
     return z_star, np.max(likelihood_list), likelihood_list, h
     
-def fitDCSBM(graph:Graph, c:int, T:int, mode = "DCSBM", directed=False):
+def fitDCSBM(graph:Graph, c:int, T:int, directed=False):
     '''
 
     Args:
@@ -129,7 +140,7 @@ def fitDCSBM(graph:Graph, c:int, T:int, mode = "DCSBM", directed=False):
     L_star = 0
     L_list = []
     for p in range(T):
-        z, likelihood, likelihood_list, h = runOnePhase(graph, z, c, mode=mode, directed=directed)
+        z, likelihood, likelihood_list, h = runOnePhase(graph, z, c, directed=directed)
         L_list.extend(likelihood_list)
         if likelihood > L_star:
             L_star = likelihood
@@ -141,9 +152,9 @@ def fitDCSBM(graph:Graph, c:int, T:int, mode = "DCSBM", directed=False):
 
 def init_q2_graph(graph:Graph, c:int, colors:list):
     z_init = list(np.random.randint(3, size=len(g.vs)))
-    l_orig = log_likelihood(g.get_edgelist(), z_init)
+    l_orig = log_likelihood(g, z_init)
     fig, ax = plt.subplots()
-    ig.plot(g, vertex_color = [colors[i] for i in g.vs["community"]], target=ax)
+    ig.plot(g, vertex_color = [colors[i] for i in z_init], target=ax)
     ax.text(0.6, 1.5, s=f"Log-Likelihood: \n {round(l_orig, 3)}")
     ax.set_axis_off()
     return fig, z_init
@@ -187,7 +198,7 @@ fig_a1, z_inita = init_q2_graph(g, c=3, colors=colors)
 
 is_frozen_init = [False for _ in range(len(g.vs))]
 
-_, z_star, l_star = makeAMove(g, z=z_inita, c=3, is_frozen=is_frozen_init, mode="DCSBM")
+_, z_star, l_star = makeAMove(g, z=z_inita, c=3, is_frozen=is_frozen_init)
 
 fig_a2 = plot_dcsbm(g, z_star, l_star, colors)
 
@@ -197,7 +208,7 @@ fig_a2 = plot_dcsbm(g, z_star, l_star, colors)
 
 fig_b1, z_initb = init_q2_graph(g, c=3, colors=colors)
 
-z_starb, l_starb, l_listb, _ = runOnePhase(g, z=z_initb, c=3, mode="DCSBM")
+z_starb, l_starb, l_listb, _ = runOnePhase(g, z=z_initb, c=3)
 
 fig_b2 = plot_dcsbm(g, z_starb, l_starb, colors)
 
@@ -236,7 +247,7 @@ def karate_search(max_phases, max_iterations):
     for i in tqdm(range(max_iterations)):
         z_d, l_d, _, _ = fitDCSBM(karate, c=2, T=max_phases)
         if z_d == list(karate_partition) or z_d == list(karate_partition_inv):
-            print(f"Found the karate partition in {i+1} runs!")
+            tqdm.write(f"Found the karate partition in {i+1} runs!") 
             fig, _ = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
             fig.show()
             return z_d

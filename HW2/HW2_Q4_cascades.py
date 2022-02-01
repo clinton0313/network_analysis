@@ -1,7 +1,7 @@
 #%%
 import igraph as ig
 import numpy as np
-import os, matplotlib
+import os, matplotlib, pickle, itertools
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from itertools import combinations
@@ -16,7 +16,7 @@ def gen_planted_partition(n, p, q, c):
     g = ig.Graph(directed=False)
     g.add_vertices(n)
     g.vs["community"] = z
-    for i, j in tqdm(combinations(range(len(z)), 2), f"Generating n={n} Planted Partition", position=1):
+    for i, j in combinations(range(len(z)), 2):
         if z[i] == z[j] and np.random.uniform() < p:
             g.add_edge(i, j)
         elif z[i] != z[j] and np.random.uniform() < q:
@@ -32,9 +32,9 @@ def plot_planted_partition(graph, partition, colors, title):
 
 #%%
 #part(a)
-d=2
+d=10
 n=100
-c=10
+c=2
 epsilon = [0,4,8]
 colors = [f"tab:{color}" for color in ["blue", "orange", "green", "red", "purple", "brown", "pink", "gray", "olive", "cyan"]]
 figs_a = []
@@ -43,59 +43,74 @@ for e in epsilon:
     p = (2*d + e)/(2*n)
     q = (2*d - e)/(2*n)
     planted_partition = gen_planted_partition(n=n, p=p, q=q, c=c)
+    planted_partition.layout_fruchterman_reingold()
     fig = plot_planted_partition(graph=planted_partition, 
         partition=planted_partition.vs["community"], 
         colors=colors, 
-        title=f"Planted Partition with p={round(p, 2)}, q={round(q, 2)}, e={epsilon} and <k>=d={d}")
+        title=f"Planted Partition with p={round(p, 2)}, q={round(q, 2)}, e={e} and <k>=d={d}")
     figs_a.append(fig)
 
 #%%
-def get_pandemic_cluster_stats(graph):
-    n = len(graph.vs)
-    infected = int(np.random.randint(n, size=1))
-    components = graph.clusters()
-    c = components.membership[infected]
-    cluster = components.subgraph(c)
-    return len(cluster.vs)/len(graph.vs), cluster.diameter()
+def infect(graph, p):
+    t = 0
+    graph.es["used"] = np.zeros_like(graph.es) #0: unused, #1: used
+    #List of infected
+    infected = []
+    #One time infecting stage
+    infecting = list(np.random.randint(len(graph.vs), size=1))
     
-def get_pandemic_stats(cluster):
-    return len(cluster.vs), cluster.diameter()
+    while len(infecting) > 0:
+        #Take an infecting person
+        infect = infecting.pop()
 
-def pandemic_simulation(n, p_range, e, c, sims):
-    pandemic_sizes = []
-    pandemic_lengths = []
-    for p in p_range:
-        q = p - e/n
-        average_size = []
-        average_length = []
-        for _ in tqdm(range(sims), f"Sims for p={p}", position=0):
-            g = gen_planted_partition(n=n, p=p, q=q, c=c)
-            size, diameter = get_pandemic_cluster_stats(g)
-            average_size.append(size)
-            average_length.append(diameter)
-        pandemic_sizes.append(np.mean(average_size))
-        pandemic_lengths.append(np.mean(average_length))
-    return pandemic_sizes, pandemic_lengths
+        #Get all incident edges that are unused
+        links = [i for i in graph.incident(infect) if not graph.es["used"][i]]
+
+        for link in links:
+            #Set link to used
+            graph.es["used"][link] = 1
+
+            #If transmission successful
+            if np.random.uniform() < p:
+                i, j = graph.es[link].source, graph.es[link].target
+
+                #Use source or target that is not the origin and not already infected and add to infecting
+                if i != infect and i not in infected:
+                    infecting.append(i)
+                elif j not in infected:
+                    infecting.append(j)
+
+        #Uptick period and add move infecting to infected
+        t += 1
+        infected.append(infect)
+    return infected, t
+
+def pandemic_simulation(n, d, e, c, prob_infection, sims):
+    sizes = []
+    lengths = []
+    for _ in range(sims):
+        p = (2*d + e)/(2*n)
+        q = (2*d - e)/(2*n)
+        g = gen_planted_partition(n=n, p=p, q=q, c=c)
+        infected, t = infect(g, prob_infection)
+        sizes.append(len(infected)/len(g.vs))
+        lengths.append(t)
+    return (np.mean(sizes), np.mean(lengths))
+
+
 #%%
 #part(b)
 e = 0
-p_range = np.arange(0, 1, 0.05)
-p = 0.05
+p_range = np.arange(0, 1, 0.05) #Chance of infection along an edge
 n=100
-c=8
-q = p - e/n
-sims = 10
+c=2
+d=8
+sims = 50
 
-#Test here
-# g = gen_planted_partition(n=n, p=p, q=q, c=c)
-# fig = plot_planted_partition(graph=g,
-#     partition=planted_partition.vs["community"],
-#     colors=colors,
-#     title="")
-
-epidemic_sizes, epidemic_lengths = pandemic_simulation(n=n, p_range=p_range, e=e, c=c, sims=sims)
-
-
+stats = [pandemic_simulation(n, d, e, c, prob_infection, sims) for prob_infection in tqdm(p_range)]
+epidemic_sizes, epidemic_lengths = zip(*stats)
+        
+    
 #%%
 fig_b_size, ax_size = plt.subplots()
 ax_size.plot(p_range, epidemic_sizes)
@@ -109,17 +124,15 @@ ax_length.set_ylabel("Epidemic Length (l)")
 
 #%%
 
-#part(c)
+# #part(c)
 n=200
 p_range = np.arange(0,1, 0.05)
 sims=10
-c=8
+c=2
+d=8
 e_range= range(0,17,2)
 
-sim_results = []
-for e in e_range:
-    e_sizes, e_lengths = pandemic_simulation(n=n, p_range = p_range, e=e, c=c, sims=sims)
-    sim_results.append((p_range, e_sizes, e_lengths))
+sim_results = [[pandemic_simulation(n, d, e, c, prob_infection=p, sims=sims) for p in p_range] for e in tqdm(e_range)]
 
 fig_c_size, ax_c_size = plt.subplots()
 ax_c_size.set_xlabel("Probability of Transmission (p)")
@@ -131,8 +144,15 @@ ax_c_length.set_xlabel("Probability of Transmission (p)")
 ax_c_length.set_ylabel("Epidemic Length (l)")
 ax_c_length.legend()
 
-for i, p, size, length in enumerate(sim_results):
-    ax_c_size.plot(p, size, color=colors[i], label=f"e={e_range[i]}")
-    ax_c_length.plot(p, length, color=colors[i], label=f"e={e_range[i]}")
+for i, e in enumerate(e_range):
+    sizes, lengths = zip(*sim_results[i])
+    ax_c_size.plot(p_range, sizes, color=colors[i], label=f"e={e}")
+    ax_c_length.plot(p_range, lengths, color=colors[i], label=f"e={e}")
+
+#%%
+with open ("sim_results.pkl", "wb") as outfile:
+    pickle.dump(sim_results, outfile)
+
+# # %%
 
 # %%
