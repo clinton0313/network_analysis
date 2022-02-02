@@ -38,7 +38,7 @@ def log_likelihood(graph:Graph, partition:list, directed=False):
     for u, v in combinations_with_replacement(groups, 2):
         #Get either Nuu or Nuv
         if u == v:
-            N = partition.count(u) * (partition.count(u) - 1)
+            N = partition.count(u) * (partition.count(u) - 1) / 2
         else:
             N = partition.count(u) * partition.count(v)
         
