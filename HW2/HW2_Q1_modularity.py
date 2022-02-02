@@ -15,7 +15,8 @@ females = np.array([[0.289, 0.204, 0.423, 0.084]])
 random_prob = np.matmul(np.transpose(males), females)
 
 X = adj - random_prob
-modularity = (np.sum(X) - np.trace(X))/16
+modularity = (np.trace(X))
 print(f"The modularity with respect to race is {modularity}")
+#Since these probabilities sum to 1 there is an assumed 1 undirected edge amongst the entire matrix
 # %%
 #From 1/2n * \sum(A_ij - P_ij) * Ind(c_i != c_j)
