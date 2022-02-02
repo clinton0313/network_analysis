@@ -153,7 +153,7 @@ ax_c_length.legend()
 savepath = os.path.join("q4", "figs")
 os.makedirs(savepath, exist_ok=True)
 
-all_figs = figs_a.extend([fig_b_length, fig_b_size, fig_c_length, fig_c_size])
+all_figs = figs_a + [fig_b_length, fig_b_size, fig_c_length, fig_c_size]
 fig_names = [f"HW2_Q4_{name}.png" for name in ["a1", "a2", "a3", "b_length", "b_size", "c_length", "c_size"]]
 
 for name, fig in zip(fig_names, all_figs):
