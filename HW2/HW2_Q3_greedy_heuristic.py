@@ -14,6 +14,12 @@ def get_group_degree(graph:Graph, group, partition):
     for i, community in enumerate(partition):
         if community == group:
             k += len(graph.incident(i, mode="all"))
+            # incident_edges = graph.incident(i, mode="all")
+            # for edge in incident_edges:
+            #     if partition[graph.es[edge].target] == partition[graph.es[edge].source]:
+            #         k += 0.5
+            #     else:
+            #         k += 1
     return k
 
 def log_likelihood(graph:Graph, partition:list, directed=False):
@@ -107,20 +113,16 @@ def runOnePhase(graph:Graph, z:list, c:int, directed=False):
     l0 = log_likelihood(graph, z) #Should I have this initial likelihood?
     likelihood_list = []
     h = 0
-
+    z_star = z.copy()
     for t in range(n):
-        node_index, z_i, likelihood = makeAMove(graph, z, c, is_frozen, directed=directed)
+        node_index, z_star, likelihood = makeAMove(graph, z_star, c, is_frozen, directed=directed)
         is_frozen[node_index] = True
-        if likelihood_list == []:
-            z_star = z_i
-        elif likelihood > np.max(likelihood_list):
-            z_star = z_i
         likelihood_list.append(likelihood)
     
     #Check if we use z_star or z:
     if np.max(likelihood_list) <= l0:
         h = 1
-        z_star = z
+        z_star = z.copy()
     return z_star, np.max(likelihood_list), likelihood_list, h
     
 def fitDCSBM(graph:Graph, c:int, T:int, directed=False):
@@ -146,7 +148,7 @@ def fitDCSBM(graph:Graph, c:int, T:int, directed=False):
             L_star = likelihood
             z_star = z.copy()
         if h:
-            print("Halting criterion met! Terminating DCSBM.")
+            tqdm.write(f"Halting criterion met in {p+1} phases! Terminating DCSBM.")
             return z_star, L_star, p+1, L_list
     return z_star, L_star, T, L_list 
 
@@ -192,64 +194,67 @@ savepath = os.path.join("q3", "figs")
 os.makedirs(savepath, exist_ok=True)
 matplotlib.style.use("seaborn-bright")
 
-#Part (a)
+# #Part (a)
 
-fig_a1, z_inita = init_q2_graph(g, c=3, colors=colors)
+# fig_a1, z_inita = init_q2_graph(g, c=3, colors=colors)
 
-is_frozen_init = [False for _ in range(len(g.vs))]
+# is_frozen_init = [False for _ in range(len(g.vs))]
 
-_, z_star, l_star = makeAMove(g, z=z_inita, c=3, is_frozen=is_frozen_init)
+# _, z_star, l_star = makeAMove(g, z=z_inita, c=3, is_frozen=is_frozen_init)
 
-fig_a2 = plot_dcsbm(g, z_star, l_star, colors)
+# fig_a2 = plot_dcsbm(g, z_star, l_star, colors)
 
-# %%
+# # %%
 
-#part b
+# #part b
 
-fig_b1, z_initb = init_q2_graph(g, c=3, colors=colors)
+# fig_b1, z_initb = init_q2_graph(g, c=3, colors=colors)
 
-z_starb, l_starb, l_listb, _ = runOnePhase(g, z=z_initb, c=3)
+# z_starb, l_starb, l_listb, _ = runOnePhase(g, z=z_initb, c=3)
 
-fig_b2 = plot_dcsbm(g, z_starb, l_starb, colors)
+# fig_b2 = plot_dcsbm(g, z_starb, l_starb, colors)
 
-fig_b3 = plot_log_iterations(len(l_listb), l_listb)
+# fig_b3 = plot_log_iterations(len(l_listb), l_listb)
 
-# %%
-#part (c)
+# # %%
+# #part (c)
 
-z_starc, l_starc, p, l_listc = fitDCSBM(g, c=3, T=30)
+# z_starc, l_starc, p, l_listc = fitDCSBM(g, c=3, T=30)
 
-fig_c1 = plot_dcsbm(g, z_starc, l_starc, colors)
+# fig_c1 = plot_dcsbm(g, z_starc, l_starc, colors)
 
-max_likelihoods = []
-multiplier = int(len(l_listc) / p)
-for i in range(p-1):
-    max_likelihoods.append(np.max(l_listc[ multiplier * i : multiplier * (i+1)]))
-max_likelihoods.append(np.max(l_listc[multiplier * (p-1):]))
+# max_likelihoods = []
+# multiplier = int(len(l_listc) / p)
+# for i in range(p-1):
+#     max_likelihoods.append(np.max(l_listc[ multiplier * i : multiplier * (i+1)]))
+# max_likelihoods.append(np.max(l_listc[multiplier * (p-1):]))
 
-fig_c2 = plot_log_iterations(p, max_likelihoods)
-# %%
+# fig_c2 = plot_log_iterations(p, max_likelihoods)
+# # %%
 
-fig_names = ["a1", "a2", "b1", "b2", "b3", "c1", "c2"]
-figs = [fig_a1, fig_a2, fig_b1, fig_b2, fig_b3, fig_c1, fig_c2]
-for name, fig in zip(fig_names, figs):
-    fig.savefig(os.path.join(savepath, f"Q3_{name}.png"), facecolor="white", transparent=False)
-#%%
+# fig_names = ["a1", "a2", "b1", "b2", "b3", "c1", "c2"]
+# figs = [fig_a1, fig_a2, fig_b1, fig_b2, fig_b3, fig_c1, fig_c2]
+# for name, fig in zip(fig_names, figs):
+#     fig.savefig(os.path.join(savepath, f"Q3_{name}.png"), facecolor="white", transparent=False)
+# #%%
 
 #part d
-
-#%%
 def karate_search(max_phases, max_iterations):
     g = Graph()
     karate = g.Read_GraphML("zachary.graphml")
     karate_partition = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     karate_partition_inv = np.abs(1 - karate_partition)
     for i in tqdm(range(max_iterations)):
+        plt.ion()
         z_d, l_d, _, _ = fitDCSBM(karate, c=2, T=max_phases)
+        plt.clf()
+        plt.close()
+        fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
+        plt.pause(1)
         if z_d == list(karate_partition) or z_d == list(karate_partition_inv):
             tqdm.write(f"Found the karate partition in {i+1} runs!") 
-            fig, _ = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
-            fig.show()
+            fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
+            plt.show(block=True)
             return z_d
     print(f"Did not find the correct partition even after {max_iterations} iterations!")
     return z_d
@@ -257,8 +262,8 @@ def karate_search(max_phases, max_iterations):
 g = Graph()
 karate = g.Read_GraphML("zachary.graphml")
 karate_partition = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in karate_partition])
+# ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in karate_partition])
 # %%
-z_d = karate_search(300, 300)
+z_d = karate_search(30, 300)
 ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in z_d])
 # %%
