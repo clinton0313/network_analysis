@@ -9,17 +9,13 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 #%%
+#FUNCTIONS
+
 def get_group_degree(graph:Graph, group, partition):
     k = 0
     for i, community in enumerate(partition):
         if community == group:
             k += len(graph.incident(i, mode="all"))
-            # incident_edges = graph.incident(i, mode="all")
-            # for edge in incident_edges:
-            #     if partition[graph.es[edge].target] == partition[graph.es[edge].source]:
-            #         k += 0.5
-            #     else:
-            #         k += 1
     return k
 
 def log_likelihood(graph:Graph, partition:list, directed=False):
@@ -152,6 +148,27 @@ def fitDCSBM(graph:Graph, c:int, T:int, directed=False):
             return z_star, L_star, p+1, L_list
     return z_star, L_star, T, L_list 
 
+def karate_search(max_phases, max_iterations):
+    g = Graph()
+    karate = g.Read_GraphML("zachary.graphml")
+    karate_partition = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    karate_partition_inv = np.abs(1 - karate_partition)
+    for i in tqdm(range(max_iterations)):
+        plt.ion()
+        z_d, l_d, _, _ = fitDCSBM(karate, c=2, T=max_phases)
+        plt.clf()
+        plt.close()
+        fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
+        # fig.savefig(f"{i}.png", facecolor="white", transparent=False)
+        plt.pause(1)
+        if z_d == list(karate_partition) or z_d == list(karate_partition_inv):
+            tqdm.write(f"Found the karate partition in {i+1} runs!") 
+            fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
+            plt.show(block=True)
+            return z_d
+    print(f"Did not find the correct partition even after {max_iterations} iterations!")
+    return z_d
+
 def init_q2_graph(graph:Graph, c:int, colors:list):
     z_init = list(np.random.randint(3, size=len(g.vs)))
     l_orig = log_likelihood(g, z_init)
@@ -181,6 +198,8 @@ def plot_log_iterations(iterations, l_list):
     return fig            
 
 #%%
+#PROBLEM SET
+
 # #Q2 graph:
 
 edge_list = [(0, 1), (0, 7), (0, 8), (0, 6), (0, 5), (0, 2), (5, 2), (5, 3), (5, 4), (2, 3)]
@@ -189,81 +208,52 @@ g = Graph(edges=edge_list, directed=False)
 g.vs["community"] = z
 colors = ["blue", "red", "green"]
 
-#%%
 savepath = os.path.join("q3", "figs")
 os.makedirs(savepath, exist_ok=True)
 matplotlib.style.use("seaborn-bright")
+#%%
+#Part (a)
 
-# #Part (a)
+fig_a1, z_inita = init_q2_graph(g, c=3, colors=colors)
+_, z_star, l_star = makeAMove(g, z=z_inita, c=3, is_frozen=[False for _ in range(len(g.vs))])
+fig_a2 = plot_dcsbm(g, z_star, l_star, colors)
 
-# fig_a1, z_inita = init_q2_graph(g, c=3, colors=colors)
-
-# is_frozen_init = [False for _ in range(len(g.vs))]
-
-# _, z_star, l_star = makeAMove(g, z=z_inita, c=3, is_frozen=is_frozen_init)
-
-# fig_a2 = plot_dcsbm(g, z_star, l_star, colors)
-
-# # %%
-
-# #part b
-
-# fig_b1, z_initb = init_q2_graph(g, c=3, colors=colors)
-
-# z_starb, l_starb, l_listb, _ = runOnePhase(g, z=z_initb, c=3)
-
-# fig_b2 = plot_dcsbm(g, z_starb, l_starb, colors)
-
-# fig_b3 = plot_log_iterations(len(l_listb), l_listb)
-
-# # %%
-# #part (c)
-
-# z_starc, l_starc, p, l_listc = fitDCSBM(g, c=3, T=30)
-
-# fig_c1 = plot_dcsbm(g, z_starc, l_starc, colors)
-
-# max_likelihoods = []
-# multiplier = int(len(l_listc) / p)
-# for i in range(p-1):
-#     max_likelihoods.append(np.max(l_listc[ multiplier * i : multiplier * (i+1)]))
-# max_likelihoods.append(np.max(l_listc[multiplier * (p-1):]))
-
-# fig_c2 = plot_log_iterations(p, max_likelihoods)
-# # %%
-
-# fig_names = ["a1", "a2", "b1", "b2", "b3", "c1", "c2"]
-# figs = [fig_a1, fig_a2, fig_b1, fig_b2, fig_b3, fig_c1, fig_c2]
-# for name, fig in zip(fig_names, figs):
-#     fig.savefig(os.path.join(savepath, f"Q3_{name}.png"), facecolor="white", transparent=False)
-# #%%
-
-#part d
-def karate_search(max_phases, max_iterations):
-    g = Graph()
-    karate = g.Read_GraphML("zachary.graphml")
-    karate_partition = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-    karate_partition_inv = np.abs(1 - karate_partition)
-    for i in tqdm(range(max_iterations)):
-        plt.ion()
-        z_d, l_d, _, _ = fitDCSBM(karate, c=2, T=max_phases)
-        plt.clf()
-        plt.close()
-        fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
-        plt.pause(1)
-        if z_d == list(karate_partition) or z_d == list(karate_partition_inv):
-            tqdm.write(f"Found the karate partition in {i+1} runs!") 
-            fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
-            plt.show(block=True)
-            return z_d
-    print(f"Did not find the correct partition even after {max_iterations} iterations!")
-    return z_d
 # %%
+#part b
+
+fig_b1, z_initb = init_q2_graph(g, c=3, colors=colors)
+z_starb, l_starb, l_listb, _ = runOnePhase(g, z=z_initb, c=3)
+
+fig_b2 = plot_dcsbm(g, z_starb, l_starb, colors)
+fig_b3 = plot_log_iterations(len(l_listb), l_listb)
+
+# %%
+#part (c)
+
+z_starc, l_starc, p, l_listc = fitDCSBM(g, c=3, T=30)
+fig_c1 = plot_dcsbm(g, z_starc, l_starc, colors)
+
+max_likelihoods = []
+multiplier = int(len(l_listc) / p)
+for i in range(p-1):
+    max_likelihoods.append(np.max(l_listc[ multiplier * i : multiplier * (i+1)]))
+max_likelihoods.append(np.max(l_listc[multiplier * (p-1):]))
+
+fig_c2 = plot_log_iterations(p, max_likelihoods)
+# %%
+#Save Graphs
+
+fig_names = ["a1", "a2", "b1", "b2", "b3", "c1", "c2"]
+figs = [fig_a1, fig_a2, fig_b1, fig_b2, fig_b3, fig_c1, fig_c2]
+for name, fig in zip(fig_names, figs):
+    fig.savefig(os.path.join(savepath, f"Q3_{name}.png"), facecolor="white", transparent=False)
+#%%
+#part d
+
 g = Graph()
 karate = g.Read_GraphML("zachary.graphml")
 karate_partition = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-# ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in karate_partition])
-# %%
+ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in karate_partition])
 z_d = karate_search(30, 300)
-ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in z_d])
+# ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in z_d])
 # %%
