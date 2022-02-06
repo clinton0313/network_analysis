@@ -47,7 +47,7 @@ def log_likelihood(graph:Graph, partition:list, directed=False):
         #Get Euv
         E = 0
         for i, j in graph.get_edgelist():
-            if (partition[i] == u and partition[j] == v) or (partition[i] == v and partition[j] == u):
+            if (partition[i] == u and partition[j] == v):
                 E +=1
         
         #Compute group degrees
@@ -154,13 +154,13 @@ def karate_search(max_phases, max_iterations):
     karate_partition = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     karate_partition_inv = np.abs(1 - karate_partition)
     for i in tqdm(range(max_iterations)):
-        plt.ion()
+        # plt.ion()
         z_d, l_d, _, _ = fitDCSBM(karate, c=2, T=max_phases)
-        plt.clf()
-        plt.close()
+        # plt.clf()
+        # plt.close()
         fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
-        # fig.savefig(f"{i}.png", facecolor="white", transparent=False)
-        plt.pause(1)
+        fig.savefig(f"{i}.png", facecolor="white", transparent=False)
+        # plt.pause(1)
         if z_d == list(karate_partition) or z_d == list(karate_partition_inv):
             tqdm.write(f"Found the karate partition in {i+1} runs!") 
             fig = plot_dcsbm(karate, z_d, l_d, ["blue", "red"])
