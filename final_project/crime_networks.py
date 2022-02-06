@@ -83,13 +83,14 @@ def load_nx_graph(df, graph_name=""):
     graph.graph["name"] = graph_name
     return graph
 
-def plot_nx_graph(graph, weighted = False, weight_multiplier = 1, remove_isolated = False, save=False, savepath = "", **plot_options):
+def plot_nx_graph(graph, weighted = False, weight_multiplier = 1, largest_component = False, remove_isolated = False, save=False, savepath = "", **plot_options):
     '''
     Plot network x graph helper function.
     Args:
         graph: Network X Graph Object
         weighted: Boolean. If true, plot edge widths based on edge weight.
         weight_multiplier: Adjust the width of the edges if using weighted plotting
+        largest_component: Boolean. If true only plots the largest component
         remove_isolated: Boolean. Removes isolated nodes from the graph before plotting
         save: Boolean. If true will save the graph using it's name.
         savepath: Dirpath to save the graph
@@ -98,15 +99,19 @@ def plot_nx_graph(graph, weighted = False, weight_multiplier = 1, remove_isolate
         Matplotlib figure
     '''
     g = graph.copy()
-    if remove_isolated:
+    if largest_component:
+        g = g.subgraph(max(nx.connected_components(g)))
+    elif remove_isolated:
         g.remove_nodes_from(list(nx.isolates(g)))
     fig, ax = plt.subplots(figsize=(20, 20))
     ax.set_axis_off()
-    ax.set_title(g.graph["name"])
-    if weighted:
-        weights = np.array(list(nx.get_edge_attributes(g, "weight").values())) * weight_multiplier
+    ax.set_title(g.graph["name"],fontsize=30)
+    if weighted: #Should maybe include some sort of standardization of edge widths like min-max scale
+        weights = np.array(list(nx.get_edge_attributes(g, "weight").values()))
+        weights = (weights - weights.min()+1)/(weights.max()+1) * weight_multiplier
         plot_options.update({"width":weights})
-    nx.draw_kamada_kawai(g, ax=ax, **plot_options)
+    pos = nx.drawing.layout.spring_layout(g, k=0.5 / np.sqrt(len(g.nodes)))
+    nx.draw(g, ax=ax, pos=pos, **plot_options)
     if save:
         fig.savefig(os.path.join(savepath, f'{g.graph["name"]}.png'), dpi =300)
     return fig
@@ -144,11 +149,13 @@ network_graphs = read_all_network_data(network_data_dir)
 
 #%%
 figs = [
-    plot_nx_graph(graph, 
-        weighted=True, weight_multiplier = 1, remove_isolated=True, 
+    plot_nx_graph(graph, weighted=True, weight_multiplier = 3, 
+        largest_component=True, remove_isolated=True, 
         save=True, savepath = savepath, 
         node_size=100)
     for graph in network_graphs
 ]
 
 # %%
+#Paul revere dataset has many self loops indicating total participation at events? Dataset is colocation of 
+#at events so maybe not the best set if there are only 12 events or so
