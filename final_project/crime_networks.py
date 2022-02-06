@@ -83,7 +83,7 @@ def load_nx_graph(df, graph_name=""):
     graph.graph["name"] = graph_name
     return graph
 
-def plot_nx_graph(graph, weighted = False, weight_multiplier = 2, remove_isolated = False, save=False, savepath = "", **plot_options):
+def plot_nx_graph(graph, weighted = False, weight_multiplier = 1, remove_isolated = False, save=False, savepath = "", **plot_options):
     '''
     Plot network x graph helper function.
     Args:
@@ -100,7 +100,7 @@ def plot_nx_graph(graph, weighted = False, weight_multiplier = 2, remove_isolate
     g = graph.copy()
     if remove_isolated:
         g.remove_nodes_from(list(nx.isolates(g)))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(20, 20))
     ax.set_axis_off()
     ax.set_title(g.graph["name"])
     if weighted:
@@ -108,7 +108,7 @@ def plot_nx_graph(graph, weighted = False, weight_multiplier = 2, remove_isolate
         plot_options.update({"width":weights})
     nx.draw_kamada_kawai(g, ax=ax, **plot_options)
     if save:
-        fig.savefig(os.path.join(savepath, f'{g.graph["name"]}.png'))
+        fig.savefig(os.path.join(savepath, f'{g.graph["name"]}.png'), dpi =300)
     return fig
 
 def read_all_network_data(network_data_dir):
@@ -141,8 +141,13 @@ network_data_dir = "crime_network_data"
 savepath = "figs"
 os.makedirs("figs", exist_ok=True)
 network_graphs = read_all_network_data(network_data_dir)
+
+#%%
 figs = [
-    plot_nx_graph(graph, remove_isolated=True, save=True, savepath = savepath, node_size=50)
+    plot_nx_graph(graph, 
+        weighted=True, weight_multiplier = 1, remove_isolated=True, 
+        save=True, savepath = savepath, 
+        node_size=100)
     for graph in network_graphs
 ]
 
