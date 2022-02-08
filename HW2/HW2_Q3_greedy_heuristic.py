@@ -46,8 +46,8 @@ def log_likelihood(graph:Graph, partition:list, directed=False):
         
         #Get Euv
         E = 0
-        for i, j in graph.get_edgelist():
-            if (partition[i] == u and partition[j] == v):
+        for (i, j) in graph.get_edgelist():
+            if (partition[i] == u and partition[j] == v) or (partition[i] == v and partition[j] == u):
                 E +=1
         
         #Compute group degrees
@@ -254,6 +254,6 @@ g = Graph()
 karate = g.Read_GraphML("zachary.graphml")
 karate_partition = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in karate_partition])
-z_d = karate_search(30, 300)
-# ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in z_d])
+z_d = karate_search(30, 5)
+ig.plot(karate, vertex_label=karate.vs["id"], vertex_color=[colors[i] for i in z_d])
 # %%

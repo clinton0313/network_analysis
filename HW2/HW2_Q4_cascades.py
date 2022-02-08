@@ -38,28 +38,29 @@ def infect(graph, p):
     
     while len(infecting) > 0:
         #Take an infecting person
-        infect = infecting.pop()
+        new_infecting = []
+        for infect in infecting:
+            #Get all incident edges that are unused
+            links = [i for i in graph.incident(infect) if not graph.es["used"][i]]
 
-        #Get all incident edges that are unused
-        links = [i for i in graph.incident(infect) if not graph.es["used"][i]]
+            for link in links:
+                #Set link to used
+                graph.es["used"][link] = 1
 
-        for link in links:
-            #Set link to used
-            graph.es["used"][link] = 1
+                #If transmission successful
+                if np.random.uniform() < p:
+                    i, j = graph.es[link].source, graph.es[link].target
 
-            #If transmission successful
-            if np.random.uniform() < p:
-                i, j = graph.es[link].source, graph.es[link].target
-
-                #Use source or target that is not the origin and not already infected and add to infecting
-                if i != infect and i not in infected and i not in infecting:
-                    infecting.append(i)
-                elif j != infect and j not in infected and j not in infecting:
-                    infecting.append(j)
-
+                    #Use source or target that is not the origin and not already infected and add to infecting
+                    if i != infect and i not in infected and i not in infecting:
+                        new_infecting.append(i)
+                    elif j != infect and j not in infected and j not in infecting:
+                        new_infecting.append(j)
+            
+            infected.append(infect)
         #Uptick period and add move infecting to infected
         t += 1
-        infected.append(infect)
+        infecting = new_infecting.copy()
     return infected, t
 
 def pandemic_simulation(n, d, e, c, prob_infection, sims):
