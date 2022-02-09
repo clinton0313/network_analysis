@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import pickle
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
-
 #%%
 #FUNCTIONS
 
@@ -169,7 +168,6 @@ os.makedirs(savepath, exist_ok=True)
 network_graphs = read_all_network_data(ucinet_dirpath)
 
 #Load Ndrangheta mafia data. CSV is in form of co-located meetings so specific parsing
-
 #Load and save node names
 ndra = pd.read_csv(os.path.join(other_crime_dirpath, "ndrangheta_mafia", "NDRANGHETAMAFIA_2M.csv"))
 ndra_names = ndra.iloc[:,0].to_list()
