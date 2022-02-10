@@ -12,7 +12,7 @@ from typing import Callable
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 #%%
-class Investigation(nx.Graph):
+class Investigation():
     def __init__(self, crime_network:nx.Graph, random_catch:float, model:Callable = None, 
         strategy:Callable = None, first_criminal:int = None, title:str = "", caught_color:str="black",
         suspect_color:str="red", criminal_color:str="blue", informed_color:str="orange"):
@@ -43,8 +43,6 @@ class Investigation(nx.Graph):
         Attributes:
             investigations, caught, suspects, fig, ax, title. 
         '''
-        super(Investigation, self).__init__()
-
         #Network intiializationa and attributes
         self.crime_network = crime_network
         nx.set_node_attributes(self.crime_network, False, "suspected")

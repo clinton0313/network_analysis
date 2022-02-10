@@ -10,8 +10,7 @@ from time import sleep
 #%%
 
 #SAMPLE MODEL AND SIMULATION
-def simple_model(graph):
-    q = 0.9
+def simple_model(graph, q):
     p_dict = {}
     for node in graph.nodes:
         if graph.nodes[node].get("suspected"):
@@ -30,7 +29,7 @@ with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as
     network_graphs = pickle.load(infile)
 
 inv = Investigation(crime_network = network_graphs[0], random_catch = 0.1)
-inv.set_model(simple_model)
+inv.set_model(simple_model, q = 0.2)
 inv.set_strategy(simple_strategy, random_catch = inv.random_catch)
 inv.plot()
 
