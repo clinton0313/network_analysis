@@ -28,16 +28,13 @@ def simple_strategy(current_investigation, random_catch):
 with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as infile:
     network_graphs = pickle.load(infile)
 
-inv = Investigation(crime_network = network_graphs[0], random_catch = 0.1)
+inv = Investigation(crime_network = network_graphs[2], random_catch = 0.1)
 inv.set_model(simple_model, q = 0.2)
 inv.set_strategy(simple_strategy, random_catch = inv.random_catch)
 inv.plot()
 
-inv.simulate(5, 5, update_plot=True)
-sleep(1)
-inv.reset(keep_fig=True)
-inv.refresh_fig()
-sleep(10)
-
+inv.simulate(100, 100, update_plot=True, sleep_time = 0.01)
+sleep(30)
+print(inv.log)
 
 #%%

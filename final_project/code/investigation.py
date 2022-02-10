@@ -7,14 +7,14 @@ import numpy as np
 from functools import partial
 import matplotlib.pyplot as plt
 from time import sleep
-from typing import Callable
+from typing import Callable, DefaultDict
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 #%%
 class Investigation():
     def __init__(self, crime_network:nx.Graph, random_catch:float, model:Callable = None, 
-        strategy:Callable = None, first_criminal:int = None, title:str = "", caught_color:str="black",
+        strategy:Callable = None, first_criminal:int = None, compute_eigen = True, title:str = "", caught_color:str="black",
         suspect_color:str="red", criminal_color:str="blue", informed_color:str="orange"):
         '''
         Class to handle investigations simulations of criminal networks. Main method is to either call investigate or simulation to run investigate in a loop.
@@ -29,6 +29,7 @@ class Investigation():
                 suspect (int) and probability of capture (float) in that order. To use more arguments, use set_strategy method. Return string "random" in place of the suspect
                 and an artbitrary value for p to catch a random unknown criminal instead.
             first_criminal: Optionally initialize the first criminal otherwise a random criminal will be used
+            compute_eigen: Computes and stores the eigenvector centrality in handle "eigen" upon init. 
             title: Title used for plotting of graph.
 
         Methods:
@@ -48,11 +49,15 @@ class Investigation():
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
         nx.set_edge_attributes(self.crime_network, False, "informed")
+        self.eigen = False
+        if compute_eigen:
+            self.compute_eigen_centrality()
         self.random_catch = random_catch
 
         self.investigations = 1
         self.caught = []
         self.suspects = []
+        self.log = DefaultDict(list)
 
         self.current_investigation = None
         if first_criminal == None:
@@ -83,6 +88,7 @@ class Investigation():
 
         #Initialize
         self._caught_suspect(first_criminal)
+        self._log_stats()
 
     def _set_probas(self, suspect_probas:dict = {}):
         '''Set new capture probabilities'''
@@ -105,18 +111,18 @@ class Investigation():
         self.caught.append(suspect)
         self.node_colors[suspect] = self.caught_color
         self.crime_network.nodes[suspect]["suspected"] = False
+        if self.investigations != 1:
+            self.suspects.remove(suspect)
         for i, j in list(self.crime_network.edges(suspect)):
             #Use provided order to choose source-target
-            if j not in self.caught:
+            if j not in self.caught and j not in self.suspects:
                 self.crime_network.nodes[j]["suspected"] = True
                 self.suspects.append(j)
                 self.node_colors[j] = self.suspect_color
-
             #Reorder edges to index edges
             i, j = min(i, j), max(i, j)
             self.crime_network[i][j]["informed"] = True
             self.edge_colors[list(self.crime_network.edges).index((i, j))] = self.informed_color
-
         self._update_investigation()
 
     def _update_investigation(self):
@@ -134,6 +140,14 @@ class Investigation():
         if self.model_proba is None: 
             print("No underlying model is defined. Please define model using set_model method.")
             return False
+    
+    def _log_stats(self):
+        self.log["caught"].append(len(self.caught))
+        self.log["suspects"].append(len(self.suspects))
+        self.log["informed"].append(len(self.current_investigation.edges))
+        if self.eigen:
+            self.log["captured_eigen"].append(np.sum([self.crime_network.nodes.data("eigen")[i] for i in self.caught]))
+        self.log["investigation"].append(self.investigations)
 
     def set_model(self, model:Callable, **kwargs):
         '''Set underlying probability model for capture of suspects. Function should take a graph of suspects and known criminals as an argument
@@ -203,6 +217,11 @@ class Investigation():
         if not self.ax:
             self.fig, self.ax = plt.subplots(figsize=(20, 20))
 
+        statistics = f"Investigations: {self.investigations}\nCaught Criminals: {len(self.caught)}\nSuspects: {len(self.suspects)}"
+        if self.eigen:
+            captured_eigen = np.sum([self.crime_network.nodes.data("eigen")[i] for i in self.caught])
+            statistics = statistics + f"\nCaptured EC:{round(captured_eigen, 2)}"
+
         nx.draw(self.crime_network, pos=self.layout, 
             ax=self.ax, node_color = self.node_colors,
             edge_color = self.edge_colors,
@@ -210,13 +229,13 @@ class Investigation():
         self.ax.set_axis_off()
         self.ax.set_title(self.title, fontsize=30)
         self.ax.text(x = 0.8, y = 0, 
-            s = f"Investigations: {self.investigations}\nCaught Criminals: {len(self.caught)}\nSuspects: {len(self.suspects)}",
+            s = statistics,
             transform=self.ax.transAxes, fontsize=20)
         
         if showfig:
             self.fig.show()
     
-    def simulate(self, max_criminals:int = 0, max_investigations:int = 0, update_plot = False, sleep_time = 1, **kwargs):
+    def simulate(self, max_criminals:int = 0, max_investigations:int = 0, update_plot = False, sleep_time = 0.5, **kwargs):
         '''
         Investigates until either stopping criterion is met or entire network caught.
 
@@ -230,10 +249,11 @@ class Investigation():
         '''
         if self._model_check == False:
             return
-        max_criminals = min(max_criminals, len(self.crime_network.nodes))
-
         while len(self.caught) <= max_criminals and self.investigations <= max_investigations:
+            if len(self.caught) == len(self.crime_network.nodes):
+                break
             self.investigate(update_plot=update_plot, **kwargs)
+            self._log_stats()
             if update_plot:
                 sleep(sleep_time)
     
@@ -257,7 +277,7 @@ class Investigation():
             self.fig = None
             
         self._caught_suspect(first_criminal)
-        # self.refresh_fig()
+        self._log_stats()
         print("Crime network reset.")
     
     def refresh_fig(self):
@@ -269,5 +289,10 @@ class Investigation():
             self.ax.clear()
             self.plot(showfig=False)
             self.fig.canvas.draw()
+    
+    def compute_eigen_centrality(self, handle = "eigen"):
+        ec = nx.eigenvector_centrality(self.crime_network)
+        nx.set_node_attributes(self.crime_network, ec, name=handle)
+        self.eigen = True
 
 
