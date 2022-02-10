@@ -26,7 +26,8 @@ class Investigation(nx.Graph):
             model: Underlying model that determines the probability of catching suspects. Function should take a graph of suspects and known criminals as an argument
                 and return a dictionary of probabilities corresponding to {suspect: probability}
             strategy: Underlying algorithmn that investigate will use. Function should take at least a graph of suspects and known criminals as an argument and return a 
-                suspect (int) and probability of capture (float) in that order. To use more arguments, use set_strategy method.
+                suspect (int) and probability of capture (float) in that order. To use more arguments, use set_strategy method. Return string "random" in place of the suspect
+                and an artbitrary value for p to catch a random unknown criminal instead.
             first_criminal: Optionally initialize the first criminal otherwise a random criminal will be used
             title: Title used for plotting of graph.
 
@@ -143,7 +144,8 @@ class Investigation(nx.Graph):
 
     def set_strategy(self, strategy:Callable, **kwargs):
         '''Sets investigation strategy. Function should take at least a graph of suspects and known criminals as an argument and return a 
-            suspect (int) and probability of capture (float) in that order.'''
+            suspect (int) and probability of capture (float) in that order. Return string "random" in place of the suspect and an artbitrary value for p
+            to catch a random unknown criminal instead.'''
         self.strategy =  partial(strategy, **kwargs)
     
     def set_layout(self, pos):
@@ -160,15 +162,15 @@ class Investigation(nx.Graph):
         '''
         if self._model_check() == False:
             return
-
+        #Set probabilities of the model
         suspect_probas = self.model_proba()
         self._set_probas(suspect_probas)
         suspect, p = self.strategy(self.current_investigation)
+        
         if suspect == "random":
             self._catch_random()
         elif np.random.uniform() < p:
             self._caught_suspect(suspect)
-
         self.investigations += 1
 
         if update_plot:
@@ -199,7 +201,7 @@ class Investigation(nx.Graph):
             weights = np.array(list(nx.get_edge_attributes(self.crime_network, "weight").values()))
             weights = (weights - weights.min()+1)/(weights.max()+1) * weight_multiplier
             kwargs.update({"width":weights})
-
+        
         if not self.ax:
             self.fig, self.ax = plt.subplots(figsize=(20, 20))
 
@@ -232,12 +234,12 @@ class Investigation(nx.Graph):
             return
         max_criminals = min(max_criminals, len(self.crime_network.nodes))
 
-        while len(self.caught) < max_criminals and self.investigations < max_investigations:
+        while len(self.caught) <= max_criminals and self.investigations <= max_investigations:
             self.investigate(update_plot=update_plot, **kwargs)
             if update_plot:
                 sleep(sleep_time)
     
-    def reset(self, first_criminal:int = None):
+    def reset(self, first_criminal:int = None, keep_fig:bool = False):
         '''Resets the network and reinitializes using either first_criminal or random start if first_criminal not provided.'''
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
@@ -252,11 +254,22 @@ class Investigation(nx.Graph):
 
         self.node_colors = [self.criminal_color for _ in range(len(self.crime_network.nodes))]
         self.edge_colors = ["black" for _ in range(len(self.crime_network.edges))]
-        self.fig = None
-        self.ax = None
-
+        
+        if not keep_fig:
+            self.fig = None
+            
         self._caught_suspect(first_criminal)
+        # self.refresh_fig()
         print("Crime network reset.")
     
     def refresh_fig(self):
-        pass
+        '''Refreshes the figure.'''
+        if self.ax and self.fig:
+            if not matplotlib.is_interactive():
+                plt.ion()
+            self.fig.canvas.flush_events()
+            self.ax.clear()
+            self.plot(showfig=False)
+            self.fig.canvas.draw()
+
+

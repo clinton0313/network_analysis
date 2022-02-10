@@ -9,6 +9,7 @@ from time import sleep
 
 #%%
 
+#SAMPLE MODEL AND SIMULATION
 def simple_model(graph):
     q = 0.9
     p_dict = {}
@@ -33,10 +34,11 @@ inv.set_model(simple_model)
 inv.set_strategy(simple_strategy, random_catch = inv.random_catch)
 inv.plot()
 
-inv.simulate(100, 20, update_plot=True)
-sleep(5)
-inv.reset()
-inv.plot()
+inv.simulate(5, 5, update_plot=True)
+sleep(1)
+inv.reset(keep_fig=True)
+inv.refresh_fig()
+sleep(10)
 
 
 #%%
