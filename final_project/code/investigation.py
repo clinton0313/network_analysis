@@ -1,18 +1,20 @@
 #%%
 import pickle, os, matplotlib
+from turtle import update
 import networkx as nx
 import pandas as pd
 import numpy as np
 from functools import partial
 import matplotlib.pyplot as plt
 from time import sleep
+from typing import Callable
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 #%%
 class Investigation(nx.Graph):
-    def __init__(self, crime_network:nx.Graph, random_catch:float, model:function = None, 
-        strategy:function = None, first_criminal:int = None, title:str = "", caught_color:str="black",
+    def __init__(self, crime_network:nx.Graph, random_catch:float, model:Callable = None, 
+        strategy:Callable = None, first_criminal:int = None, title:str = "", caught_color:str="black",
         suspect_color:str="red", criminal_color:str="blue", informed_color:str="orange"):
         '''
         Class to handle investigations simulations of criminal networks. Main method is to either call investigate or simulation to run investigate in a loop.
@@ -36,6 +38,9 @@ class Investigation(nx.Graph):
             reset: Resets the network but keeps the set model and strategy.
             plot: Plot the network.
             set_layout: Set plotting layout.
+        
+        Attributes:
+            investigations, caught, suspects, fig, ax, title. 
         '''
         super(Investigation, self).__init__()
 
@@ -46,16 +51,17 @@ class Investigation(nx.Graph):
         nx.set_edge_attributes(self.crime_network, False, "informed")
         self.random_catch = random_catch
 
-        self.investigations = 0
-        self.caught_criminals = []
-        self.suspected_criminals = []
+        self.investigations = 1
+        self.caught = []
+        self.suspects = []
 
         self.current_investigation = None
         if first_criminal == None:
             first_criminal = np.random.randint(len(self.crime_network.nodes))
-        self._caught_suspect(first_criminal)
-
-        self.model_proba = partial(model, self.current_investigation)
+        if model == None:
+            self.model_proba = None
+        else:
+            self.model_proba = partial(model, self.current_investigation)
         self.strategy = strategy
         
         #Plotting attributes
@@ -66,12 +72,18 @@ class Investigation(nx.Graph):
                 print("Graph had no name property for titling plots")
         else:
             self.title = title
-        self.criminal_color, self.suspect_color, self.caught_color, self.informed_color = criminal_color, suspect_color, caught_color, informed_color
+        self.criminal_color = criminal_color
+        self.suspect_color = suspect_color
+        self.caught_color = caught_color
+        self.informed_color = informed_color
         self.node_colors = [self.criminal_color for _ in range(len(self.crime_network.nodes))]
         self.edge_colors = ["black" for _ in range(len(self.crime_network.edges))]
         self.fig = None
         self.ax = None
         self.layout = nx.layout.spring_layout(self.crime_network, k = 0.5 / np.sqrt(len(self.crime_network.nodes)))
+
+        #Initialize
+        self._caught_suspect(first_criminal)
 
     def _set_probas(self, suspect_probas:dict = {}):
         '''Set new capture probabilities'''
@@ -91,14 +103,14 @@ class Investigation(nx.Graph):
     def _caught_suspect(self, suspect:int):
         '''Update graph properties when suspect is caught'''
         self.crime_network.nodes[suspect]["caught"] = True
-        self.caught_criminals.append(suspect)
+        self.caught.append(suspect)
         self.node_colors[suspect] = self.caught_color
         self.crime_network.nodes[suspect]["suspected"] = False
         for i, j in list(self.crime_network.edges(suspect)):
             #Use provided order to choose source-target
-            if j not in self.caught_criminals:
+            if j not in self.caught:
                 self.crime_network.nodes[j]["suspected"] = True
-                self.suspected_criminals.append(j)
+                self.suspects.append(j)
                 self.node_colors[j] = self.suspect_color
 
             #Reorder edges to index edges
@@ -111,7 +123,7 @@ class Investigation(nx.Graph):
     def _update_investigation(self):
         '''Update current investigation graphview with new suspected and informed'''
         def filter_node(x):
-            return x in self.suspected_criminals or x in self.caught_criminals
+            return x in self.suspects or x in self.caught
         def filter_edge(i, j):
             return self.crime_network[i][j].get("informed", False) or self.crime_network[j][i].get("informed", False)
         self.current_investigation = nx.subgraph_view(self.crime_network, filter_node=filter_node, filter_edge=filter_edge)
@@ -124,12 +136,12 @@ class Investigation(nx.Graph):
             print("No underlying model is defined. Please define model using set_model method.")
             return False
 
-    def set_model(self, model:function, **kwargs):
+    def set_model(self, model:Callable, **kwargs):
         '''Set underlying probability model for capture of suspects. Function should take a graph of suspects and known criminals as an argument
             and return a dictionary of probabilities corresponding to {suspect: probability}'''
         self.model_proba = partial(model, self.current_investigation, **kwargs)
 
-    def set_strategy(self, strategy:function, **kwargs):
+    def set_strategy(self, strategy:Callable, **kwargs):
         '''Sets investigation strategy. Function should take at least a graph of suspects and known criminals as an argument and return a 
             suspect (int) and probability of capture (float) in that order.'''
         self.strategy =  partial(strategy, **kwargs)
@@ -169,16 +181,18 @@ class Investigation(nx.Graph):
                 self.fig.canvas.draw()
             else:
                 self.plot(**plot_kwargs)
+                self.fig.show()
         elif plot:
             self.plot(**plot_kwargs)
 
-    def plot(self, weighted:bool = True, weight_multiplier:float = 3, **kwargs):
+    def plot(self, weighted:bool = True, weight_multiplier:float = 3, showfig:bool = True, **kwargs):
         '''
         Plots the network and saves to self.fig and self.ax. 
 
         Args:
             weighted: If true, plots weighted edge widths
             weight_multiplier: Adjusts the scale of weighted edge widths
+            showfig: If true, calls fig.show(). 
             **kwargs: Extra arguments passed to nx.draw()
         '''
         if weighted:
@@ -195,88 +209,54 @@ class Investigation(nx.Graph):
             **kwargs)
         self.ax.set_axis_off()
         self.ax.set_title(self.title, fontsize=30)
-        self.ax.text(x = 0.9, y = 0, 
-            s = f"Investigations: {self.investigations}\nCaught Criminals: {len(self.caught_criminals)}\nSuspects: {len(self.suspected_criminals)}",
+        self.ax.text(x = 0.8, y = 0, 
+            s = f"Investigations: {self.investigations}\nCaught Criminals: {len(self.caught)}\nSuspects: {len(self.suspects)}",
             transform=self.ax.transAxes, fontsize=20)
+        
+        if showfig:
+            self.fig.show()
     
-    def simulate(self, max_criminals:int = -1, max_investigations:int = -1, update_plot = False, sleep_time = 1, **kwargs):
+    def simulate(self, max_criminals:int = 0, max_investigations:int = 0, update_plot = False, sleep_time = 1, **kwargs):
         '''
         Investigates until either stopping criterion is met or entire network caught.
 
             Args:
                 max_criminals: Number of criminals to catch before stopping investigation.
                 max_investigations: Number of investigations to make before stopping investigation.
+                condition: "and" or "or". How stopping criterion considers combines max_criminals and max_investigations conditions. 
                 update_plot: Plots and updates as simulation runs. See investigate method.
                 sleep_time: Sleep time between plot updates. Default 1. 
                 **kwargs: Arguments such as plot and update_plot to be passed to investigate. 
         '''
         if self._model_check == False:
             return
-        max_criminals = max(max_criminals, len(self.crime_network.nodes))
-        while self.caught_criminals < max_criminals and self.investigations < max_investigations:
+        max_criminals = min(max_criminals, len(self.crime_network.nodes))
+
+        while len(self.caught) < max_criminals and self.investigations < max_investigations:
             self.investigate(update_plot=update_plot, **kwargs)
             if update_plot:
                 sleep(sleep_time)
     
-    def reset(self, first_criminal):
+    def reset(self, first_criminal:int = None):
         '''Resets the network and reinitializes using either first_criminal or random start if first_criminal not provided.'''
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
         nx.set_edge_attributes(self.crime_network, False, "informed")
-        self.investigations = 0
-        self.caught_criminals = []
-        self.suspected_criminals = []
+        self.investigations = 1
+        self.caught = []
+        self.suspects = []
 
         self.current_investigation = None
         if first_criminal == None:
             first_criminal = np.random.randint(len(self.crime_network.nodes))
-        self._caught_suspect(first_criminal)
 
         self.node_colors = [self.criminal_color for _ in range(len(self.crime_network.nodes))]
         self.edge_colors = ["black" for _ in range(len(self.crime_network.edges))]
         self.fig = None
         self.ax = None
+
+        self._caught_suspect(first_criminal)
         print("Crime network reset.")
-
-
-
-
-#%%
-
-def simple_model(graph):
-    q = 0.9
-    p_dict = {}
-    for node in graph.nodes:
-        if graph.nodes[node].get("suspected"):
-            p_dict[node] = (q * len(graph.edges(node)))
-    return p_dict
-
-def simple_strategy(current_investigation, random_catch):
-    suspected = list(current_investigation.nodes(data="catch_proba"))
-    if len(suspected) == 0:
-        return "random", None
-    suspected.sort(reverse=True, key = lambda x: x[1])
-    return suspected[0][0], suspected[0][1]
-
-#%%
-with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as infile:
-    network_graphs = pickle.load(infile)
-
-inv = Investigation(crime_network = network_graphs[0], random_catch = 0.1)
-inv.set_model(simple_model)
-inv.set_strategy(simple_strategy, random_catch = inv.random_catch)
-
-#%%
-from time import sleep
-plt.ion()
-inv.plot()
-inv.fig.show()
-sleep(2)
-for _ in range(5):
-    inv.investigate(update_plot=True)
-    sleep(2)
-input()
-
-# %%
-
-#Test reset, simulate methods. 
+    
+    def refresh_fig(self):
+        pass
