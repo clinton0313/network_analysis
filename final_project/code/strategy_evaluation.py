@@ -44,11 +44,11 @@ for model_name, (model, model_params) in zip(model_names, models.items()):
     for strat_name, (strategy, strategy_params) in zip(strategy_names, strategies.items()):
         for graph in tqdm(graphs, desc="Investigating graph: ", position=1):
             inv = Investigation(graph)
-            inv.set_model(constant_model, c=0.05, weighted=True)
-            inv.set_strategy(simple_greedy)
+            inv.set_model(model, **model_params)
+            inv.set_strategy(strategy, **strategy_params)
             fig, ax = plot_simulations(investigation=inv,
                 sims=100, max_criminals=10, max_investigations=200,
-                title=f"{inv.crime_network.graph['name']}\n{strat_name}; {model_name} Model",color="blue", alpha=0.1)
+                title=f"{inv.crime_network.graph['name']}\n{strat_name}; {model_name} Model",color="blue", alpha=0.04)
             fig.savefig(os.path.join(savepath, 
                 f"{inv.crime_network.graph['name']}_{strat_name.lower().replace(' ','')}_{model_name.lower().replace(' ','')}.png"),
                 facecolor="white", transparent=False)
