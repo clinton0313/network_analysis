@@ -226,7 +226,7 @@ class Investigation():
             if update_plot:
                 sleep(sleep_time)
 
-    def plot(self, weighted:bool = True, weight_multiplier:float = 3, showfig:bool = True, **kwargs):
+    def plot(self, weighted:bool = True, weight_multiplier:float = 3, showfig:bool = True, label = "", **kwargs):
         '''
         Plots the network and saves to self.fig and self.ax. 
 
@@ -234,6 +234,7 @@ class Investigation():
             weighted: If true, plots weighted edge widths
             weight_multiplier: Adjusts the scale of weighted edge widths
             showfig: If true, calls fig.show(). 
+            label: Text label under title.
             **kwargs: Extra arguments passed to nx.draw()
         '''
         if weighted:
@@ -255,15 +256,23 @@ class Investigation():
             **kwargs)
         self.ax.set_axis_off()
         self.ax.set_title(self.title, fontsize=30)
+        self.ax.text(x=0, y = 0, s=label, fontsize=15, transform=self.ax.transAxes)
         self.ax.text(x = 0.8, y = 0, 
             s = statistics,
-            transform=self.ax.transAxes, fontsize=20)
+            transform=self.ax.transAxes, fontsize=15)
         
         if showfig:
             self.fig.show()
     
     def reset(self, first_criminal:int = None, keep_fig:bool = False):
-        '''Resets the network and reinitializes using either first_criminal or random start if first_criminal not provided.'''
+        '''
+        Resets the network, and reinitializes. Does not reset the model and strategy.
+        
+        Args:
+            first_criminal: Initialize with an optional first criminal index. Otherwise random.
+            keep_fig: If true, does not reset the current figure and ax. Set to true and run subsequent simulations using update_plot
+                to keep refreshing to a new figure
+        '''
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
         nx.set_edge_attributes(self.crime_network, False, "informed")
@@ -294,5 +303,3 @@ class Investigation():
             self.ax.clear()
             self.plot(showfig=False)
             self.fig.canvas.draw()
-
-
