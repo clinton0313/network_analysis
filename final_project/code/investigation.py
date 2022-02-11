@@ -13,7 +13,7 @@ os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 #%%
 class Investigation():
-    def __init__(self, crime_network:nx.Graph, random_catch:float, model:Callable = None, 
+    def __init__(self, crime_network:nx.Graph, random_catch:float=0.05, model:Callable = None, 
         strategy:Callable = None, first_criminal:int = None, compute_eigen = True, title:str = "", caught_color:str="black",
         suspect_color:str="red", criminal_color:str="blue", informed_color:str="orange"):
         '''
@@ -51,7 +51,7 @@ class Investigation():
         nx.set_edge_attributes(self.crime_network, False, "informed")
         self.eigen = False
         if compute_eigen:
-            self.compute_eigen_centrality()
+            self._compute_eigen_centrality()
         self.random_catch = random_catch
 
         self.investigations = 1
@@ -89,6 +89,19 @@ class Investigation():
         #Initialize
         self._caught_suspect(first_criminal)
         self._log_stats()
+
+    def _compute_eigen_centrality(self, handle = "eigen"):
+        ec = nx.eigenvector_centrality(self.crime_network)
+        nx.set_node_attributes(self.crime_network, ec, name=handle)
+        self.eigen = True
+
+    def _model_check(self):
+        if self.strategy is None:
+            print("No strategy set. Please set a strategy using set_strategy method.")
+            return False
+        if self.model_proba is None: 
+            print("No underlying model is defined. Please define model using set_model method.")
+            return False
 
     def _set_probas(self, suspect_probas:dict = {}):
         '''Set new capture probabilities'''
@@ -132,14 +145,6 @@ class Investigation():
         def filter_edge(i, j):
             return self.crime_network[i][j].get("informed", False) or self.crime_network[j][i].get("informed", False)
         self.current_investigation = nx.subgraph_view(self.crime_network, filter_node=filter_node, filter_edge=filter_edge)
-
-    def _model_check(self):
-        if self.strategy is None:
-            print("No strategy set. Please set a strategy using set_strategy method.")
-            return False
-        if self.model_proba is None: 
-            print("No underlying model is defined. Please define model using set_model method.")
-            return False
     
     def _log_stats(self):
         self.log["caught"].append(len(self.caught))
@@ -199,6 +204,28 @@ class Investigation():
         elif plot:
             self.plot(**plot_kwargs)
 
+    def simulate(self, max_criminals:int = 0, max_investigations:int = 0, update_plot = False, sleep_time = 0.5, **kwargs):
+        '''
+        Investigates until either stopping criterion is met or entire network caught.
+
+            Args:
+                max_criminals: Number of criminals to catch before stopping investigation.
+                max_investigations: Number of investigations to make before stopping investigation.
+                condition: "and" or "or". How stopping criterion considers combines max_criminals and max_investigations conditions. 
+                update_plot: Plots and updates as simulation runs. See investigate method.
+                sleep_time: Sleep time between plot updates. Default 1. 
+                **kwargs: Arguments such as plot and update_plot to be passed to investigate. 
+        '''
+        if self._model_check == False:
+            return
+        while len(self.caught) <= max_criminals and self.investigations <= max_investigations:
+            if len(self.caught) == len(self.crime_network.nodes):
+                break
+            self.investigate(update_plot=update_plot, **kwargs)
+            self._log_stats()
+            if update_plot:
+                sleep(sleep_time)
+
     def plot(self, weighted:bool = True, weight_multiplier:float = 3, showfig:bool = True, **kwargs):
         '''
         Plots the network and saves to self.fig and self.ax. 
@@ -235,28 +262,6 @@ class Investigation():
         if showfig:
             self.fig.show()
     
-    def simulate(self, max_criminals:int = 0, max_investigations:int = 0, update_plot = False, sleep_time = 0.5, **kwargs):
-        '''
-        Investigates until either stopping criterion is met or entire network caught.
-
-            Args:
-                max_criminals: Number of criminals to catch before stopping investigation.
-                max_investigations: Number of investigations to make before stopping investigation.
-                condition: "and" or "or". How stopping criterion considers combines max_criminals and max_investigations conditions. 
-                update_plot: Plots and updates as simulation runs. See investigate method.
-                sleep_time: Sleep time between plot updates. Default 1. 
-                **kwargs: Arguments such as plot and update_plot to be passed to investigate. 
-        '''
-        if self._model_check == False:
-            return
-        while len(self.caught) <= max_criminals and self.investigations <= max_investigations:
-            if len(self.caught) == len(self.crime_network.nodes):
-                break
-            self.investigate(update_plot=update_plot, **kwargs)
-            self._log_stats()
-            if update_plot:
-                sleep(sleep_time)
-    
     def reset(self, first_criminal:int = None, keep_fig:bool = False):
         '''Resets the network and reinitializes using either first_criminal or random start if first_criminal not provided.'''
         nx.set_node_attributes(self.crime_network, False, "suspected")
@@ -289,10 +294,5 @@ class Investigation():
             self.ax.clear()
             self.plot(showfig=False)
             self.fig.canvas.draw()
-    
-    def compute_eigen_centrality(self, handle = "eigen"):
-        ec = nx.eigenvector_centrality(self.crime_network)
-        nx.set_node_attributes(self.crime_network, ec, name=handle)
-        self.eigen = True
 
 
