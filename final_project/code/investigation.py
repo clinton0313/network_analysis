@@ -264,7 +264,7 @@ class Investigation():
         if showfig:
             self.fig.show()
     
-    def reset(self, first_criminal:int = None, keep_fig:bool = False):
+    def reset(self, first_criminal:int = None, keep_fig:bool = False, verbose=False):
         '''
         Resets the network, and reinitializes. Does not reset the model and strategy.
         
@@ -292,7 +292,8 @@ class Investigation():
             
         self._caught_suspect(first_criminal)
         self._log_stats()
-        print("Crime network reset.")
+        if verbose:
+            print("Crime network reset.")
     
     def refresh_fig(self):
         '''Refreshes the figure.'''

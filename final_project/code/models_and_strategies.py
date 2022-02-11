@@ -10,13 +10,6 @@ import numpy as np
 from time import sleep
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)),".."))
-
-#%%
-with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as infile:
-    graphs = pickle.load(infile)
-
-inv = Investigation(graphs[8], random_catch = 0.05)
-
 #%%
 #HELPER FUNCTIONS
 
@@ -54,7 +47,11 @@ def constant_model(graph, c, weighted=True):
     return suspect_proba
 
 def decay_model(graph, random_catch, decay, weighted=True):
-    pass
+    '''Each informative link is exponentially less information (CDF of exponential function)'''
+    suspects = get_suspects(graph)
+    information = get_information(graph, suspects, weighted)
+    suspect_proba = {suspect: max(1, (1- np.exp(-decay * info))) for suspect, info in zip(suspects, information)}
+    return suspect_proba
 
 #STRATEGIES
 
@@ -78,14 +75,3 @@ def least_central(graph):
     return suspects[random_min], suspect_proba[random_min]
 
 #%%
-
-inv = Investigation(graphs[8])
-inv.set_model(constant_model, c=0.05, weighted=True)
-inv.set_strategy(least_central)
-
-inv.simulate(10, 10, update_plot=True, label="Constant Model with Least Central Strategy")
-
-inv.set_model(exponential_model, random_catch = inv.random_catch, lr=0.3)
-inv.set_strategy(simple_greedy)
-inv.reset(keep_fig=True)
-inv.simulate(10, 10, update_plot=True, label="Exponential model with Simple Greedy Strategy")

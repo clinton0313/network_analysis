@@ -1,11 +1,10 @@
 #%%
-# %load_ext autoreload
-# %autoreload 2
 import numpy as np
 from investigation import Investigation
 import pickle, os, matplotlib, networkx
 from matplotlib import pyplot as plt
 from time import sleep
+
 
 #%%
 
@@ -31,9 +30,8 @@ with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as
 inv = Investigation(crime_network = network_graphs[2], random_catch = 0.1)
 inv.set_model(simple_model, q = 0.2)
 inv.set_strategy(simple_strategy, random_catch = inv.random_catch)
-inv.plot()
 
-inv.simulate(100, 100, update_plot=True, sleep_time = 0.01)
+inv.simulate(100, 100, update_plot=True, sleep_time = 0.01, label = "Simple Model with a simple strategy")
 sleep(30)
 print(inv.log)
 
