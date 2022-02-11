@@ -128,7 +128,7 @@ class Investigation():
             self.suspects.remove(suspect)
         for i, j in list(self.crime_network.edges(suspect)):
             #Use provided order to choose source-target
-            if j not in self.caught and j not in self.suspects:
+            if j not in self.caught and j not in self.suspects: #COuld I just check if not an informed edge????
                 self.crime_network.nodes[j]["suspected"] = True
                 self.suspects.append(j)
                 self.node_colors[j] = self.suspect_color

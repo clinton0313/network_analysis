@@ -48,7 +48,7 @@ def plot_simulations(investigation:Investigation, sims:int, max_criminals:int, m
 
 inv = Investigation(graphs[11])
 inv.set_model(constant_model, c=0.05, weighted=True)
-inv.set_strategy(simple_greedy)
+inv.set_strategy(simple_greedy) #Also doesn't work with least_central
 fig, ax = plot_simulations(investigation=inv,
     sims=100, max_criminals=100, max_investigations=200, ylabel="Captured EC",
     title=f"{inv.crime_network.graph['name']}\nSimple Greedy; Constant Model", color="blue", alpha=0.1)
