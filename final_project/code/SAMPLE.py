@@ -24,7 +24,7 @@ def simple_strategy(current_investigation, random_catch):
     return suspected[0][0], suspected[0][1]
 
 
-with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as infile:
+with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
     network_graphs = pickle.load(infile)
 
 inv = Investigation(crime_network = network_graphs[2], random_catch = 0.1)

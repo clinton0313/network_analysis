@@ -15,7 +15,7 @@ os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 class Investigation():
     def __init__(self, crime_network:nx.Graph, random_catch:float=0.05, model:Callable = None, 
         strategy:Callable = None, first_criminal:int = None, compute_eigen = True, title:str = "", caught_color:str="black",
-        suspect_color:str="red", criminal_color:str="blue", informed_color:str="orange"):
+        suspect_color:str="red", criminal_color:str="blue", informed_color:str="orange", non_gc = False):
         '''
         Class to handle investigations simulations of criminal networks. Main method is to either call investigate or simulation to run investigate in a loop.
         the crime network will be initiated with node attributes: "suspected" and "caught, and edge attribute: "informed". 
@@ -31,6 +31,8 @@ class Investigation():
             first_criminal: Optionally initialize the first criminal otherwise a random criminal will be used
             compute_eigen: Computes and stores the eigenvector centrality in handle "eigen" upon init. 
             title: Title used for plotting of graph.
+            informed_color, caught_color, suspect_color, criminal_color: colors for plotting nodes and edges.
+            non_gc: Default is False. If True, will not convert graph to giant component.
 
         Methods:
             set_model: Set the underlying model.
@@ -45,6 +47,11 @@ class Investigation():
             investigations, caught, suspects, fig, ax, title. 
         '''
         #Network intiializationa and attributes
+        components = list(nx.connected_components(crime_network))
+        if len(components) != 1:
+            crime_network = crime_network.subgraph(max(components))
+            print("Graph had multiple components, keeping only giant component")
+        del components
         self.crime_network = crime_network
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
@@ -91,7 +98,7 @@ class Investigation():
         self._log_stats()
 
     def _compute_eigen_centrality(self, handle = "eigen"):
-        ec = nx.eigenvector_centrality(self.crime_network)
+        ec = nx.eigenvector_centrality_numpy(self.crime_network)
         nx.set_node_attributes(self.crime_network, ec, name=handle)
         self.eigen = True
 
@@ -116,15 +123,15 @@ class Investigation():
         if np.random.uniform() < self.random_catch:
             unsuspected = [node for node, suspected in list(self.crime_network.nodes(data="suspected")) if not suspected]
             caught = unsuspected[np.random.randint(len(unsuspected))]
-            self._caught_suspect(caught)
+            self._caught_suspect(caught, random = True)
 
-    def _caught_suspect(self, suspect:int):
+    def _caught_suspect(self, suspect:int, random = False):
         '''Update graph properties when suspect is caught'''
         self.crime_network.nodes[suspect]["caught"] = True
         self.caught.append(suspect)
         self.node_colors[suspect] = self.caught_color
         self.crime_network.nodes[suspect]["suspected"] = False
-        if self.investigations != 1:
+        if self.investigations != 1 or random:
             self.suspects.remove(suspect)
         for i, j in list(self.crime_network.edges(suspect)):
             #Use provided order to choose source-target

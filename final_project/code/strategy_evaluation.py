@@ -6,11 +6,12 @@ from time import sleep
 import matplotlib.pyplot as plt
 import networkx as nx
 from typing import Tuple
+from tqdm import tqdm
 matplotlib.use("TkAgg")
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 #%%
-with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as infile:
+with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
     graphs = pickle.load(infile)
 
 #%%
@@ -20,7 +21,7 @@ with open(os.path.join("data", "processed_data", "raw_nwx_graphs.pkl"), "rb") as
 def plot_simulations(investigation:Investigation, sims:int, max_criminals:int, max_investigations:int, 
     x:str="investigation", y:str="captured_eigen", title="", xlabel="Investigations", ylabel="", figsize:Tuple=(20,20), **kwargs):
     fig, ax = plt.subplots(figsize=figsize)
-    for _ in range(sims):
+    for _ in tqdm(range(sims)):
         investigation.reset()
         investigation.simulate(max_criminals, max_investigations)
         log = investigation.log
@@ -46,7 +47,7 @@ def plot_simulations(investigation:Investigation, sims:int, max_criminals:int, m
 #     plt.close()
 # %%
 
-inv = Investigation(graphs[11])
+inv = Investigation(graphs[10])
 inv.set_model(constant_model, c=0.05, weighted=True)
 inv.set_strategy(simple_greedy) #Also doesn't work with least_central
 fig, ax = plot_simulations(investigation=inv,

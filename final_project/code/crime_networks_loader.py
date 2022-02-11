@@ -154,6 +154,9 @@ def read_all_network_data(network_data_dir):
         network_graphs.append(graph)
     return network_graphs
 
+def extract_gc(graph):
+    return graph.subgraph(max(nx.connected_components(graph)))
+
 #%%
 
 #Set filepaths
@@ -201,9 +204,12 @@ network_graphs.append(montagna_graph)
 
 #%%
 #Save file. Filename left blank to prevent accidental overwriting.
+
+gc_graphs = [extract_gc(graph) for graph in network_graphs]
+
 filename = ""
 with open(os.path.join("data", "processed_data", filename), "wb") as outfile:
-    pickle.dump(network_graphs, outfile)
+    pickle.dump(gc_graphs, outfile)
 
 #%%
 #Plot and save all figs
