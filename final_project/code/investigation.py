@@ -258,10 +258,10 @@ class Investigation():
         if self.eigen:
             captured_eigen = np.sum([self.crime_network.nodes.data("eigen")[i] for i in self.caught])
             statistics = statistics + f"\nCaptured EC:{round(captured_eigen, 2)}"
-
+        
         nx.draw(self.crime_network, pos=self.layout, 
             ax=self.ax, node_color = dict(self.crime_network.nodes.data("color")).values(),
-            edge_color = dict(self.crime_network.edges.data("color")).values(),
+            edge_color = [color for _, _, color in self.crime_network.edges.data("color")],
             **kwargs)
         self.ax.set_axis_off()
         self.ax.set_title(self.title, fontsize=30)
