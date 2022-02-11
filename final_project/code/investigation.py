@@ -8,6 +8,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 from time import sleep
 from typing import Callable, DefaultDict
+from random import choice
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
@@ -56,6 +57,8 @@ class Investigation():
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
         nx.set_edge_attributes(self.crime_network, False, "informed")
+        nx.set_node_attributes(self.crime_network, criminal_color, "color")
+        nx.set_edge_attributes(self.crime_network, informed_color, "color")
         self.eigen = False
         if compute_eigen:
             self._compute_eigen_centrality()
@@ -68,7 +71,7 @@ class Investigation():
 
         self.current_investigation = None
         if first_criminal == None:
-            first_criminal = np.random.randint(len(self.crime_network.nodes))
+            first_criminal = choice(list(self.crime_network.nodes))
         if model == None:
             self.model_proba = None
         else:
@@ -87,8 +90,7 @@ class Investigation():
         self.suspect_color = suspect_color
         self.caught_color = caught_color
         self.informed_color = informed_color
-        self.node_colors = [self.criminal_color for _ in range(len(self.crime_network.nodes))]
-        self.edge_colors = ["black" for _ in range(len(self.crime_network.edges))]
+
         self.fig = None
         self.ax = None
         self.layout = nx.layout.spring_layout(self.crime_network, k = 0.5 / np.sqrt(len(self.crime_network.nodes)))
@@ -122,14 +124,14 @@ class Investigation():
         '''Catch a random unsuspected criminal'''
         if np.random.uniform() < self.random_catch:
             unsuspected = [node for node, suspected in list(self.crime_network.nodes(data="suspected")) if not suspected]
-            caught = unsuspected[np.random.randint(len(unsuspected))]
+            caught = choice(unsuspected)
             self._caught_suspect(caught, random = True)
 
     def _caught_suspect(self, suspect:int, random = False):
         '''Update graph properties when suspect is caught'''
         self.crime_network.nodes[suspect]["caught"] = True
         self.caught.append(suspect)
-        self.node_colors[suspect] = self.caught_color
+        self.crime_network.nodes[suspect]["color"] = self.caught_color
         self.crime_network.nodes[suspect]["suspected"] = False
         if self.investigations != 1 or random:
             self.suspects.remove(suspect)
@@ -138,11 +140,11 @@ class Investigation():
             if j not in self.caught and j not in self.suspects: #COuld I just check if not an informed edge????
                 self.crime_network.nodes[j]["suspected"] = True
                 self.suspects.append(j)
-                self.node_colors[j] = self.suspect_color
+                self.crime_network.nodes[j]["color"] = self.suspect_color
             #Reorder edges to index edges
             i, j = min(i, j), max(i, j)
             self.crime_network[i][j]["informed"] = True
-            self.edge_colors[list(self.crime_network.edges).index((i, j))] = self.informed_color
+            self.crime_network[i][j]["color"] = self.informed_color
         self._update_investigation()
 
     def _update_investigation(self):
@@ -258,8 +260,8 @@ class Investigation():
             statistics = statistics + f"\nCaptured EC:{round(captured_eigen, 2)}"
 
         nx.draw(self.crime_network, pos=self.layout, 
-            ax=self.ax, node_color = self.node_colors,
-            edge_color = self.edge_colors,
+            ax=self.ax, node_color = dict(self.crime_network.nodes.data("color")).values(),
+            edge_color = dict(self.crime_network.edges.data("color")).values(),
             **kwargs)
         self.ax.set_axis_off()
         self.ax.set_title(self.title, fontsize=30)
@@ -283,17 +285,16 @@ class Investigation():
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
         nx.set_edge_attributes(self.crime_network, False, "informed")
+        nx.set_node_attributes(self.crime_network, self.criminal_color, "color")
+        nx.set_edge_attributes(self.crime_network, self.informed_color, "color")
         self.investigations = 1
         self.caught = []
         self.suspects = []
 
         self.current_investigation = None
         if first_criminal == None:
-            first_criminal = np.random.randint(len(self.crime_network.nodes))
+            first_criminal = choice(list(self.crime_network.nodes))
 
-        self.node_colors = [self.criminal_color for _ in range(len(self.crime_network.nodes))]
-        self.edge_colors = ["black" for _ in range(len(self.crime_network.edges))]
-        
         if not keep_fig:
             self.fig = None
             
