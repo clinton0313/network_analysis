@@ -22,7 +22,7 @@ with open(os.path.join("data", "processed_data", "giant_component_crime_networks
 def plot_simulations(investigation:Investigation, sims:int, max_criminals:int, max_investigations:int, 
     x:str="investigation", y:str="captured_eigen", title="", xlabel="Investigations", ylabel="", figsize:Tuple=(20,20), **kwargs):
     fig, ax = plt.subplots(figsize=figsize)
-    for _ in tqdm(range(sims), desc=f"Simulating {title}", position=0):
+    for _ in tqdm(range(sims), desc=f"Simulating {title}", position=1):
         investigation.reset()
         investigation.simulate(max_criminals, max_investigations)
         log = investigation.log
@@ -42,7 +42,7 @@ strategy_names = ["Simple Greedy", "Least Central"]
 savepath = os.path.join("figs", "simulations")
 for model_name, (model, model_params) in zip(model_names, models.items()):
     for strat_name, (strategy, strategy_params) in zip(strategy_names, strategies.items()):
-        for graph in tqdm(graphs, desc="Investigating graph: ", position=1):
+        for graph in tqdm(graphs, desc="Investigating graph: ", position=0):
             inv = Investigation(graph)
             inv.set_model(model, **model_params)
             inv.set_strategy(strategy, **strategy_params)

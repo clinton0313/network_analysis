@@ -37,4 +37,6 @@ inv.fig.clear()
 inv.fig.close()
 print(inv.log)
 
+#Not sure why it just doesn't quietly close to be honest. Somehow should fix that. Also doesn't plot final plot. 
+
 #%%
