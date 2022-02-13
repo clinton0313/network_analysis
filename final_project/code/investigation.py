@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from time import sleep
 from typing import Callable, DefaultDict
 from random import choice
+import keyboard
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
@@ -24,6 +25,7 @@ class Investigation():
         Args:
             crime_network: Undirected, weighted graph. Optional graph property "name" will be used for plotting.
             random_catch: Probability of catching a random criminal with no information.
+            inform_prob: Probability of caught criminal informing. 
             model: Underlying model that determines the probability of catching suspects. Function should take a graph of suspects and known criminals as an argument
                 and return a dictionary of probabilities corresponding to {suspect: probability}
             strategy: Underlying algorithmn that investigate will use. Function should take at least a graph of suspects and known criminals as an argument and return a 
@@ -129,13 +131,14 @@ class Investigation():
 
     def _caught_suspect(self, suspect:int, random = False):
         '''Update graph properties when suspect is caught'''
+        #Update the caught suspect's attributes
         self.crime_network.nodes[suspect]["caught"] = True
         self.caught.append(suspect)
         self.crime_network.nodes[suspect]["color"] = self.caught_color
         self.crime_network.nodes[suspect]["suspected"] = False
         if self.investigations != 1 or random:
             self.suspects.remove(suspect)
-        for i, j in list(self.crime_network.edges(suspect)):
+        for i, j in list(self.crime_network.edges(suspect)):    
             #Use provided order to choose source-target
             if j not in self.caught and j not in self.suspects: #COuld I just check if not an informed edge????
                 self.crime_network.nodes[j]["suspected"] = True
@@ -198,6 +201,7 @@ class Investigation():
         elif np.random.uniform() < p:
             self._caught_suspect(suspect)
         self.investigations += 1
+        self._log_stats()
 
         if update_plot:
             if self.ax and self.fig:
@@ -213,7 +217,7 @@ class Investigation():
         elif plot:
             self.plot(**plot_kwargs)
 
-    def simulate(self, max_criminals:int = 0, max_investigations:int = 0, update_plot = False, sleep_time = 0.5, **kwargs):
+    def simulate(self, max_criminals:int = 0, max_investigations:int = 0, update_plot:bool = False, sleep_time:float = 0.5, **kwargs):
         '''
         Investigates until either stopping criterion is met or entire network caught.
 
@@ -222,18 +226,17 @@ class Investigation():
                 max_investigations: Number of investigations to make before stopping investigation.
                 condition: "and" or "or". How stopping criterion considers combines max_criminals and max_investigations conditions. 
                 update_plot: Plots and updates as simulation runs. See investigate method.
-                sleep_time: Sleep time between plot updates. Default 1. 
+                sleep_time: Sleep time between plot updates. Default 0.5.
                 **kwargs: Arguments such as plot and update_plot to be passed to investigate. 
         '''
         if self._model_check == False:
             return
-        while len(self.caught) <= max_criminals and self.investigations <= max_investigations:
+        while len(self.caught) < max_criminals and self.investigations < max_investigations:
             if len(self.caught) == len(self.crime_network.nodes):
                 break
             self.investigate(update_plot=update_plot, **kwargs)
-            self._log_stats()
             if update_plot:
-                sleep(sleep_time)
+                plt.pause(sleep_time)
 
     def plot(self, weighted:bool = True, weight_multiplier:float = 3, showfig:bool = True, label = "", **kwargs):
         '''
@@ -290,6 +293,7 @@ class Investigation():
         self.investigations = 1
         self.caught = []
         self.suspects = []
+        self.log = DefaultDict(list)        
 
         self.current_investigation = None
         if first_criminal == None:
