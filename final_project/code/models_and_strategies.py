@@ -69,7 +69,7 @@ def simple_greedy(graph):
     random_max = max_suspect[np.random.randint(len(max_suspect))]
     return suspects[random_max], suspect_proba[random_max]
 
-def least_central(graph):
+def least_central(graph): #Incorrect strategy I was aiming for. 
     '''Of lowest degree suspects, take a random one.'''
     suspects = get_suspects(graph)
     suspect_proba = get_suspect_proba(graph, suspects)
