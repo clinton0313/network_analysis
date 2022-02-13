@@ -82,6 +82,8 @@ def evaluate_strategies(graphs:list, sims:int, max_criminals:int, max_investigat
                 fig, ax = plot_simulations(investigation=inv,
                     sims=sims, max_criminals=max_criminals, max_investigations=max_investigations,
                     title=f"{inv.crime_network.graph['name']}\n{strat_name}; {model_name} Model", **plot_kwargs)
+                ax.spines["right"].set_visible(False)
+                ax.spines["top"].set_visible(False)
                 fig.savefig(os.path.join(savepath, 
                     f"{inv.crime_network.graph['name']}_{filepaths[strat_name]}_{model_name.lower().replace(' ','')}.png"),
                     facecolor="white", transparent=False)
@@ -94,9 +96,9 @@ with open(os.path.join("data", "processed_data", "giant_component_crime_networks
     graphs = pickle.load(infile)
 
 models = {constant_model:{"c":0.05, "weighted":True}}
-strategies = {simple_greedy:{}, least_central_criminal:{}, least_central_criminal:{"use_eigen":False}}
+strategies = {least_central_criminal:{"use_eigen":False}}
 model_names = ["Constant"]
-strategy_names = ["Simple Greedy", "Least Central Criminal Eigen", "Least Central Criminal"]
+strategy_names = ["Least Central Criminal"]
 
 evaluate_strategies(graphs=graphs,
     sims=300,

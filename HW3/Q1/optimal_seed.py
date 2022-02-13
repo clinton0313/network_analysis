@@ -62,6 +62,7 @@ class Investigation():
         nx.set_edge_attributes(self.crime_network, informed_color, "color")
 
         #Intiialize thresholds
+        self.lamb = lamb
         self.random_catch = random_catch
         if self.random_catch == "lambda":
             thresholds = np.random.normal(lamb, 0.5, len(self.crime_network.nodes))
@@ -217,6 +218,8 @@ class Investigation():
             elif np.random.uniform() < p:
                 self._caught_suspect(suspect)
         self.investigations += 1
+        self._log_stats()
+
 
         if update_plot:
             if self.ax and self.fig:
@@ -250,7 +253,6 @@ class Investigation():
             if len(self.caught) == len(self.crime_network.nodes):
                 break
             self.investigate(update_plot=update_plot, **kwargs)
-            self._log_stats()
             if update_plot:
                 sleep(sleep_time)
 
@@ -301,14 +303,24 @@ class Investigation():
             keep_fig: If true, does not reset the current figure and ax. Set to true and run subsequent simulations using update_plot
                 to keep refreshing to a new figure
         '''
+
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
         nx.set_edge_attributes(self.crime_network, False, "informed")
         nx.set_node_attributes(self.crime_network, self.criminal_color, "color")
         nx.set_edge_attributes(self.crime_network, self.informed_color, "color")
+
+        #Intiialize thresholds
+        if self.random_catch == "lambda":
+            thresholds = np.random.normal(self.lamb, 0.5, len(self.crime_network.nodes))
+            thresholds = {node:max(0, t) for node, t in zip(self.crime_network.nodes, thresholds)}
+            nx.set_node_attributes(self.crime_network, thresholds , "catch_proba")
+        self.eigen = False       
+                
         self.investigations = 1
         self.caught = []
         self.suspects = []
+        self.log = DefaultDict(list)
 
         self.current_investigation = None
         if first_criminal == None:
@@ -317,7 +329,11 @@ class Investigation():
         if not keep_fig:
             self.fig = None
             
-        self._caught_suspect(first_criminal)
+        if isinstance(first_criminal, list):
+            for criminal in first_criminal:
+                self._caught_suspect(criminal)
+        else:
+            self._caught_suspect(first_criminal)
         self._log_stats()
         if verbose:
             print("Crime network reset.")

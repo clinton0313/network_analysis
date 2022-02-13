@@ -38,7 +38,8 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 with open("giant_component_crime_networks.pkl", "rb") as infile:
     networks = pickle.load(infile)
-
+#Choose the second crime network which happens to be Mali Terrorists
+g = networks[1]
 #%%
 
 #Set a null model since we are going to be using the diffusion mode of the investigation class that was originally programmed
@@ -56,12 +57,9 @@ def optimal_seeding(graph):
     return diffused
 
 #%%
-#Choose the second crime network which happens to be Mali Terrorists
-g = networks[1]
+#Simulate for optimal seeding:
+
 sims = 60
-
-
-
 sim_records = []
 for s1, s2 in tqdm(itertools.combinations(g.nodes, 2)):
     for lamb in [1, 2]:
@@ -70,8 +68,8 @@ for s1, s2 in tqdm(itertools.combinations(g.nodes, 2)):
             #Key step here where we initiate the class and set random_catch to lambda. This is coded to generate threshold
             #values using the truncated normal as described. Otherwise we pass in the seeds, the lambda value and turn off the 
             #computing of eigenvalue centrality because it is unecessary. 
-            network = Investigation(networks[1], random_catch = "lambda", lamb=lamb, first_criminal=[s1, s2],
-                compute_eigen=False, title="mali")
+            network = Investigation(g,  random_catch = "lambda", lamb=lamb, first_criminal=[s1, s2],
+                compute_eigen=False, title=g.graph['name'])
             #Here we set the model and strategy we initiated above. 
             network.set_model(seed_model)
             network.set_strategy(optimal_seeding)
@@ -98,13 +96,14 @@ with open("optimal_seed_results.pkl", "wb") as outfile:
     pickle.dump(optimal_seed_results, outfile)
 
 #%%
+#Simulate for random diffusion: 
 
 #Same as above, but instead we sample 2 random nodes as the starting seeds and save all results into a simple dictionary
 random_diffusion = DefaultDict(list)
 for lamb in [1, 2]:
     for _ in tqdm(range(100000)):
-        network = Investigation(networks[1], random_catch = "lambda", lamb=lamb, first_criminal=sample(g.nodes, 2),
-                compute_eigen=False, title="mali")
+        network = Investigation(g, random_catch = "lambda", lamb=lamb, first_criminal=sample(g.nodes, 2),
+                compute_eigen=False, title=g.graph["name"])
         network.set_model(seed_model)
         network.set_strategy(optimal_seeding)
         network.simulate(max_criminals = 1000, max_investigations = 4)
@@ -113,6 +112,19 @@ for lamb in [1, 2]:
 with open("random_seed_results.pkl", "wb") as outfile:
     pickle.dump(random_diffusion, outfile)
 
+#%%
+
+with open("optimal_seed_results.pkl", "rb") as infile:
+    optimal_seed_results = pickle.load(infile)
+
+with open("random_seed_results.pkl", "rb") as infile:
+    random_diffusion = pickle.load(infile)
+
+
+eigen = nx.eigenvector_centrality_numpy(g, weight=None)
+network_name = g.graph["name"].split("_")
+network_name = " ".join([s.capitalize() for s in network_name])
+
 #Print statement
 for lamb in [1, 2]:
     optim = optimal_seed_results[(optimal_seed_results["Lambda"] == 1) & \
@@ -120,7 +132,33 @@ for lamb in [1, 2]:
     res = optim.loc[optim.index[0],:].to_list()
     print(f"""For Lambda = {lamb}
     The optimal seeds are {res[1]} and {res[2]} 
-    with diffusion of {res[3]} over three periods of diffusion. \n
+    with eigenvector centralities of {round(eigen[res[1]], 2)} and {round(eigen[res[2]], 2)} respectively
+    and diffusion of {round(res[3], 2)} over three periods of diffusion. \n
     Whereas using random seeding we have an expected diffusion of {np.mean(random_diffusion[lamb])}
     and variance of {round(np.var(random_diffusion[lamb]), 2)}""")
+
+
+fig, ax = plt.subplots(figsize = (14, 14))
+ax.scatter(eigen.keys(), eigen.values(), color = "black")
+ax.scatter(x = [res[1], res[2]], 
+    y = [eigen[res[1]], eigen[res[2]]],
+    color="red", marker="o", label="Optimal Seeds")
+ax.legend()
+ax.set_xlabel("Seeds")
+ax.set_ylabel("Eigenvector Centrality")
+ax.set_title(f"Eigenvector Centrality of Nodes in {network_name} (Unweighted)", fontsize=20)
+ax.spines["right"].set_visible(False)
+ax.spines["top"].set_visible(False)
+
+os.makedirs("figs", exist_ok=True)
+fig.savefig(os.path.join("figs", f"{g.graph['name']}_eigens.png"), facecolor="white", transparent=False, dpi=300)
 #%%
+node_colors = ["blue" for node in g.nodes]
+node_colors[int(res[1])] = "red"
+node_colors[int(res[2])] = "red"
+fig2, ax2 = plt.subplots(figsize=(14, 14))
+nx.draw_spring(g, ax=ax2, with_labels=True, node_color=node_colors)
+ax2.set_axis_off()
+ax2.set_title(network_name, fontsize=20)
+fig2.savefig(os.path.join("figs", f"{g.graph['name']}_plot.png"), facecolor="white", transparent=False, dpi=300)
+# %%
