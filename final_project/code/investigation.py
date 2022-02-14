@@ -142,12 +142,12 @@ class Investigation():
             self.suspects.remove(suspect)
         for i, j in list(self.crime_network.edges(suspect)):    
             #Use provided order to choose source-target
-            if j not in self.caught and j not in self.suspects: #COuld I just check if not an informed edge????
+            if j not in self.caught and j not in self.suspects: #Could I just check if not an informed edge????
                 self.crime_network.nodes[j]["suspected"] = True
                 self.suspects.append(j)
                 self.crime_network.nodes[j]["color"] = self.suspect_color
             #Reorder edges to index edges
-            i, j = min(i, j), max(i, j)
+            i, j = min(i, j), max(i, j) #Unecessary line?
             self.crime_network[i][j]["informed"] = True
             self.crime_network[i][j]["color"] = self.informed_color
         self._update_investigation()
