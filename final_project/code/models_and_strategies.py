@@ -134,6 +134,8 @@ def least_central_criminal(graph:nx.Graph, use_eigen=True, weighted = True):
         suspect = choice(candidates)
         return suspect, proba_dict[suspect]
     
+    #Should try to adjust this strategy to balance these choices and maximizing capture probability due to inforomation. 
+    
 
     
 

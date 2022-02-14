@@ -71,8 +71,6 @@ class Investigation():
         self.eigen = False
         if compute_eigen:
             self._compute_eigen_centrality()
-        
-        
 
         self.investigations = 1
         self.caught = []
@@ -249,7 +247,7 @@ class Investigation():
         '''
         if self._model_check == False:
             return
-        while len(self.caught) <= max_criminals and self.investigations <= max_investigations:
+        while len(self.caught) < max_criminals and self.investigations < max_investigations:
             if len(self.caught) == len(self.crime_network.nodes):
                 break
             self.investigate(update_plot=update_plot, **kwargs)

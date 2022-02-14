@@ -62,6 +62,7 @@ class Investigation():
         nx.set_node_attributes(self.crime_network, criminal_color, "color")
         nx.set_edge_attributes(self.crime_network, informed_color, "color")
         self.eigen = False
+        self.total_eigen = None
         if compute_eigen:
             self._compute_eigen_centrality()
         self.random_catch = random_catch
@@ -105,6 +106,7 @@ class Investigation():
         ec = nx.eigenvector_centrality_numpy(self.crime_network)
         nx.set_node_attributes(self.crime_network, ec, name=handle)
         self.eigen = True
+        self.total_eigen = np.sum(list(ec.values()))
 
     def _model_check(self):
         if self.strategy is None:
@@ -164,6 +166,7 @@ class Investigation():
         self.log["informed"].append(len(self.current_investigation.edges))
         if self.eigen:
             self.log["captured_eigen"].append(np.sum([self.crime_network.nodes.data("eigen")[i] for i in self.caught]))
+            self.log["eigen_proportion"].append(np.sum([self.crime_network.nodes.data("eigen")[i] for i in self.caught])/self.total_eigen)
         self.log["investigation"].append(self.investigations)
 
     def set_model(self, model:Callable, **kwargs):
@@ -258,9 +261,10 @@ class Investigation():
             self.fig, self.ax = plt.subplots(figsize=(20, 20))
 
         statistics = f"Investigations: {self.investigations}\nCaught Criminals: {len(self.caught)}\nSuspects: {len(self.suspects)}"
+        
         if self.eigen:
             captured_eigen = np.sum([self.crime_network.nodes.data("eigen")[i] for i in self.caught])
-            statistics = statistics + f"\nCaptured EC:{round(captured_eigen, 2)}"
+            statistics = statistics + f"\nCaptured EC Proportion:{round(captured_eigen/self.total_eigen, 2)}"
         
         nx.draw(self.crime_network, pos=self.layout, 
             ax=self.ax, node_color = dict(self.crime_network.nodes.data("color")).values(),

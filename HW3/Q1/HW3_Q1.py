@@ -51,7 +51,7 @@ def seed_model(graph):
 #unweighted for the homeowrk. Return the list of "suspects" to diffuse to. 
 def optimal_seeding(graph):
     suspects = get_suspects(graph)
-    thresholds = [graph.nodes[s]["catch_proba"] for s, attr in list(graph.nodes.data("suspected")) if attr]
+    thresholds = get_suspect_proba(graph, suspects) #[graph.nodes[s]["catch_proba"] for s, attr in list(graph.nodes.data("suspected")) if attr]
     lambdas = get_information(graph, suspects, weighted=False)
     diffused = [suspect for suspect, t in zip(suspects, thresholds) if lambdas[suspect] > t]
     return diffused
@@ -76,10 +76,10 @@ for s1, s2 in tqdm(itertools.combinations(g.nodes, 2)):
             #Here we initiate giving max_criminals of 1000 so that we do not stop the simulation prematurely.
             #We go to 4 investigations because the class counts the initial seed as a step. 
             #For a fun visualization, you could set update_plot=True in the simulate method, with sims = 1 or outside of these loops. 
-            network.simulate(max_criminals = 1000, max_investigations = 5)
+            network.simulate(max_criminals = 1000, max_investigations = 4)
             diffusion_sims.append(len(network.caught) - 2)
         #Append the results and compute the average diffusion rate as number of final nodes diffused to (less the two initial)/number of periods
-        sim_records.append((lamb, s1, s2, np.mean(diffusion_sims), np.mean(diffusion_sims)/4))
+        sim_records.append((lamb, s1, s2, np.mean(diffusion_sims), np.mean(diffusion_sims)/3))
 
 #You can uncomment and run this part to see a visualization of the diffusion process.
 
@@ -101,7 +101,7 @@ with open("optimal_seed_results.pkl", "wb") as outfile:
 #Same as above, but instead we sample 2 random nodes as the starting seeds and save all results into a simple dictionary
 random_diffusion = DefaultDict(list)
 for lamb in [1, 2]:
-    for _ in tqdm(range(100000)):
+    for _ in tqdm(range(10000)):
         network = Investigation(g, random_catch = "lambda", lamb=lamb, first_criminal=sample(g.nodes, 2),
                 compute_eigen=False, title=g.graph["name"])
         network.set_model(seed_model)
@@ -120,7 +120,7 @@ with open("optimal_seed_results.pkl", "rb") as infile:
 with open("random_seed_results.pkl", "rb") as infile:
     random_diffusion = pickle.load(infile)
 
-
+between = nx.betweenness_centrality(g, weight=None)
 eigen = nx.eigenvector_centrality_numpy(g, weight=None)
 network_name = g.graph["name"].split("_")
 network_name = " ".join([s.capitalize() for s in network_name])
@@ -142,7 +142,10 @@ fig, ax = plt.subplots(figsize = (14, 14))
 ax.scatter(eigen.keys(), eigen.values(), color = "black")
 ax.scatter(x = [res[1], res[2]], 
     y = [eigen[res[1]], eigen[res[2]]],
-    color="red", marker="o", label="Optimal Seeds")
+    color="red", marker="o", label="Optimal Seeds (4 periods)")
+ax.scatter(x = [19, 20], 
+    y = [eigen[19.0], eigen[20.0]],
+    color="yellow", marker="o", label="Optimal Seeds (3 periods)")
 ax.legend()
 ax.set_xlabel("Seeds")
 ax.set_ylabel("Eigenvector Centrality")
@@ -150,15 +153,45 @@ ax.set_title(f"Eigenvector Centrality of Nodes in {network_name} (Unweighted)", 
 ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 
+
+figb, axb = plt.subplots(figsize = (14, 14))
+axb.scatter(between.keys(), between.values(), color = "black")
+axb.scatter(x = [res[1], res[2]], 
+    y = [between[res[1]], eigen[res[2]]],
+    color="red", marker="o", label="Optimal Seeds")
+ax.scatter(x = [19, 20], 
+    y = [between[19.0], between[20.0]],
+    color="yellow", marker="o", label="Optimal Seeds (3 periods)")
+axb.legend()
+axb.set_xlabel("Seeds")
+axb.set_ylabel("Betweeness Centrality")
+axb.set_title(f"Betweeness Centrality of Nodes in {network_name} (Unweighted)", fontsize=20)
+axb.spines["right"].set_visible(False)
+axb.spines["top"].set_visible(False)
+
 os.makedirs("figs", exist_ok=True)
 fig.savefig(os.path.join("figs", f"{g.graph['name']}_eigens.png"), facecolor="white", transparent=False, dpi=300)
+figb.savefig(os.path.join("figs", f"{g.graph['name']}_between.png"), facecolor="white", transparent=False, dpi=300)
+
 #%%
+
 node_colors = ["blue" for node in g.nodes]
 node_colors[int(res[1])] = "red"
 node_colors[int(res[2])] = "red"
+node_colors[19] = "yellow"
+node_colors[20] = "yellow"
 fig2, ax2 = plt.subplots(figsize=(14, 14))
 nx.draw_spring(g, ax=ax2, with_labels=True, node_color=node_colors)
 ax2.set_axis_off()
 ax2.set_title(network_name, fontsize=20)
 fig2.savefig(os.path.join("figs", f"{g.graph['name']}_plot.png"), facecolor="white", transparent=False, dpi=300)
 # %%
+
+
+network = Investigation(networks[1], random_catch = "lambda", lamb=1, first_criminal=[19, 20],
+    compute_eigen=False, title="mali")
+network.set_model(seed_model)
+network.set_strategy(optimal_seeding)
+network.simulate(max_criminals = 1000, max_investigations = 4)
+network.plot()
+network.fig.savefig(os.path.join("figs", "mali_final.png"), facecolor="white", transparent=False)
