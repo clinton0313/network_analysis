@@ -37,6 +37,15 @@ def get_information(graph:nx.Graph, suspects:list, weighted:bool = True) -> dict
             information[suspect] = len(incident)
     return information
 
+def get_nearby_suspects(graph:nx.Graph, centroids: list):
+    '''Gets all neighboring suspects of centroids'''
+    candidates = []
+    for center in centroids:
+        candidate_suspects = [suspect for suspect in graph.neighbors(center) \
+            if graph.nodes[suspect].get("suspected") and graph[center][suspect]["informed"]]
+        candidates.extend(candidate_suspects)
+    return candidates
+
 #MODELS
 
 def exponential_model(graph, random_catch, lr, weighted=True):
@@ -82,16 +91,7 @@ def least_central(graph:nx.Graph): #Incorrect strategy I was aiming for.
     random_min = min_central[np.random.randint(len(min_central))]
     return suspects[random_min], suspect_proba[random_min]
 
-def get_nearby_suspects(graph:nx.Graph, centroids: list):
-    '''Gets all neighboring suspects of centroids'''
-    candidates = []
-    for center in centroids:
-        candidate_suspects = [suspect for suspect in graph.neighbors(center) \
-            if graph.nodes[suspect].get("suspected") and graph[center][suspect]["informed"]]
-        candidates.extend(candidate_suspects)
-    return candidates
-
-def least_central_criminal(graph:nx.Graph, use_eigen=True, weighted = True):
+def least_central_criminal(graph:nx.Graph, suspects = None, use_eigen=True, weighted = True):
     '''
     Of lowest degree caught criminals. Take those suspects as candidates. 
         Args:
@@ -100,7 +100,8 @@ def least_central_criminal(graph:nx.Graph, use_eigen=True, weighted = True):
             weighted: If true, use weighted degrees.
     '''
     #Get suspect and suspect probabilities and set weight argument
-    suspects = get_suspects(graph)
+    if suspects == None:
+        suspects = get_suspects(graph)
     suspect_proba = get_suspect_proba(graph, suspects)
     proba_dict = {s:p for s, p in zip(suspects, suspect_proba)}
     if weighted:
@@ -135,7 +136,39 @@ def least_central_criminal(graph:nx.Graph, use_eigen=True, weighted = True):
         return suspect, proba_dict[suspect]
     
 
-    
+def uncentral_greedy(graph:nx.Graph, weighted=True):
+    '''Greedy search but break ties using least central adjacent criminal''' #Need to verify. 
+    suspects = get_suspects(graph)
+    suspect_proba = get_suspect_proba(graph, suspects)
+
+    if len(suspects) == 0:
+        return "random", None
+    max_suspects = {suspect:proba for suspect, proba in zip(suspects, suspect_proba) if proba == max(suspect_proba)}
+    if len(max_suspects) == 1:
+        return list(max_suspects.keys())[0], list(max_suspects.values())[0]
+    else:
+        #Get sum of all eigenvalue centralities of connected criminals for each suspect
+        candidates = [(suspect, proba, get_connected_eigen(graph, suspect, weighted)) \
+           for suspect, proba in max_suspects.items()]
+        
+        #Filter for the minimum eigenvalue
+        minimum_eigen = np.min([x[2] for x in candidates])
+        final_candidates = list(filter(lambda x: True if x[2]==minimum_eigen else False, candidates))
+
+        #Return one of the random final candidates if there is a tie
+        suspect = choice(final_candidates)
+        return suspect[0], suspect[1]
+
+
+def get_connected_eigen(graph, suspect, weighted):
+    '''For the suspect return the sum of all connected criminals' eigenvector centralities'''
+    eigen_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
+    connected_criminals = [linked for linked in graph.neighbors(suspect) \
+        if graph.nodes[linked].get("caught") and graph[suspect][linked].get("informed")]
+    eigenvalues = [eigen_dict[connected] for connected in connected_criminals]
+    return np.sum(eigenvalues)
+
+
 
 #%%
 
@@ -147,7 +180,7 @@ def least_central_criminal(graph:nx.Graph, use_eigen=True, weighted = True):
 # g = graphs[8]
 # inv = Investigation(g)
 # inv.set_model(constant_model, c = 0.05)
-# inv.set_strategy(least_central_criminal, use_eigen=True)
-# inv.simulate(20, 20, update_plot=True, sleep_time= 1)
+# inv.set_strategy(uncentral_greedy)
+# inv.simulate(20, 200, update_plot=True, sleep_time= 1)
 # plt.pause(10)
 # %%
