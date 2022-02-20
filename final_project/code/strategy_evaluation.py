@@ -1,6 +1,6 @@
 #%%
 from investigation import Investigation
-from models_and_strategies import least_central, constant_model, exponential_model, simple_greedy, least_central_criminal
+from models_and_strategies import least_central, constant_model, exponential_model, simple_greedy, least_central_criminal, uncentral_greedy
 import pickle, os, matplotlib
 from time import sleep
 import matplotlib.pyplot as plt
@@ -108,9 +108,9 @@ with open(os.path.join("data", "processed_data", "giant_component_crime_networks
 graphs.pop(6) #omit paul_revere set. 
 
 models = {constant_model:{"c":0.05, "weighted":True}}
-strategies = {least_central_criminal:{"use_eigen":False}}
+strategies = {uncentral_greedy:{}}
 model_names = ["Constant"]
-strategy_names = ["Least Central Criminal Random"]
+strategy_names = ["Uncentral Greedy"]
 
 evaluate_strategies(graphs=graphs,
     sims=250,

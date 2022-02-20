@@ -7,7 +7,7 @@ Subject To
  top_edge: edge[0] - path[0] = 0
  middle_edge: edge[1] - path[1] - path[2] = 0
  bottom_edge: edge[2] - path[3] = 0
- agent_1: edge[0] - 3 edge[1] = -0.4997
- agent_2: - 3 edge[1] + edge[2] = -0.4997
+ agent_1: edge[0] - 3 edge[1] = -0.5000000032961291
+ agent_2: - 3 edge[1] + edge[2] = -0.5000000032961291
 Bounds
 End

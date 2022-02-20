@@ -138,7 +138,7 @@ def least_central_criminal(graph:nx.Graph, suspects = None, use_eigen=True, weig
     #Should try to adjust this strategy to balance these choices and maximizing capture probability due to inforomation. 
     
 
-def uncentral_greedy(graph:nx.Graph, weighted=True):
+def uncentral_greedy(graph:nx.Graph, mode="eigen", weighted=True):
     '''Greedy search but break ties using least central adjacent criminal''' #Need to verify. 
     suspects = get_suspects(graph)
     suspect_proba = get_suspect_proba(graph, suspects)
@@ -150,7 +150,7 @@ def uncentral_greedy(graph:nx.Graph, weighted=True):
         return list(max_suspects.keys())[0], list(max_suspects.values())[0]
     else:
         #Get sum of all eigenvalue centralities of connected criminals for each suspect
-        candidates = [(suspect, proba, get_connected_eigen(graph, suspect, weighted)) \
+        candidates = [(suspect, proba, get_connected_centrality(graph, suspect, weighted, mode=mode)) \
            for suspect, proba in max_suspects.items()]
         
         #Filter for the minimum eigenvalue
@@ -162,12 +162,15 @@ def uncentral_greedy(graph:nx.Graph, weighted=True):
         return suspect[0], suspect[1]
 
 
-def get_connected_eigen(graph, suspect, weighted):
+def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
     '''For the suspect return the sum of all connected criminals' eigenvector centralities'''
-    eigen_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
+    if mode == "eigen":
+        centrality_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
+    elif mode =="degree":
+        centrality_dict = dict(graph.degree)
     connected_criminals = [linked for linked in graph.neighbors(suspect) \
         if graph.nodes[linked].get("caught") and graph[suspect][linked].get("informed")]
-    eigenvalues = [eigen_dict[connected] for connected in connected_criminals]
+    eigenvalues = [centrality_dict[connected] for connected in connected_criminals]
     return np.sum(eigenvalues)
 
 

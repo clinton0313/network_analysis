@@ -78,7 +78,7 @@ class Investigation():
         if model == None:
             self.model_proba = None
         else:
-            self.model_proba = partial(model, self.current_investigation)
+            self.model_proba = partial(model, self.current_investigation) # IS THIS A PROBLEM??
         self.strategy = strategy
         
         #Plotting attributes
