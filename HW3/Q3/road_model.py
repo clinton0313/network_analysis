@@ -68,14 +68,13 @@ print_res(model2, x2, p2)
 
 model3, x3, p3 = base_model()
 
-# Solved from 
-#x1 = x[0].X ; x2 = x[1].X
-# c1 + (1 + x1) == 3x2 + c2
-# c1 + 1.786 == 1.2857 + c2
+#Solved by solving the system of equations:
+#c1 + 1 + x1 = 3x2 + c2 = c3 + 1+ x3  <=> All path choices' costs for each agent are equal (symmetry is property of network)
+#c1x1 + c2x2 + c3x3 = 0 <=> Ensures a balance budget between tolls and subsidies
 
-c1 = 0
-c2 = 0.5003
-c3 = 0
+c1 = x[1].X * (3 * x[1].X - 1 - x[0].X) /(2*x[0].X + x[1].X)
+c2 = -2 * c1 * x[0].X / x[1].X
+c3 = c1
 
 model3.addConstr(1 + x3[0] + c1 ==  c2 + 3*x3[1], name="agent_1")
 model3.addConstr(1 + x3[2] + c3 == c2 + 3*x3[1], name="agent_2")
@@ -87,7 +86,7 @@ model3.optimize()
 #%%
 print("General Equilibrium with tolls: \n")
 print_res(model3, x3, p3)
-
+print(f"Toll 1 is {round(c1, 3)}\nToll 2 is {round(c2, 3)}\nToll 3 is {round(c3, 3)}")
 error = 1e-2
 
 for i in range(3):

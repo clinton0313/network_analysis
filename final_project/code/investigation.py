@@ -78,7 +78,7 @@ class Investigation():
         if model == None:
             self.model_proba = None
         else:
-            self.model_proba = partial(model, self.current_investigation) # IS THIS A PROBLEM??
+            self.model_proba = partial(model, self.current_investigation)
         self.strategy = strategy
         
         #Plotting attributes
@@ -241,7 +241,7 @@ class Investigation():
             if update_plot:
                 plt.pause(sleep_time)
 
-    def plot(self, weighted:bool = True, weight_multiplier:float = 3, showfig:bool = True, label = "", **kwargs):
+    def plot(self, investigation_only = False, weighted:bool = True, weight_multiplier:float = 3, showfig:bool = True, label = "", **kwargs):
         '''
         Plots the network and saves to self.fig and self.ax. 
 
@@ -252,6 +252,8 @@ class Investigation():
             label: Text label under title.
             **kwargs: Extra arguments passed to nx.draw()
         '''
+        g = self.current_investigation if investigation_only else self.crime_network
+
         if weighted:
             weights = np.array(list(nx.get_edge_attributes(self.crime_network, "weight").values()))
             weights = (weights - weights.min()+1)/(weights.max()+1) * weight_multiplier
@@ -263,12 +265,12 @@ class Investigation():
         statistics = f"Investigations: {self.investigations}\nCaught Criminals: {len(self.caught)}\nSuspects: {len(self.suspects)}"
         
         if self.eigen:
-            captured_eigen = np.sum([self.crime_network.nodes.data("eigen")[i] for i in self.caught])
+            captured_eigen = np.sum([g.nodes.data("eigen")[i] for i in self.caught])
             statistics = statistics + f"\nCaptured EC Proportion:{round(captured_eigen/self.total_eigen, 2)}"
-        
-        nx.draw(self.crime_network, pos=self.layout, 
-            ax=self.ax, node_color = dict(self.crime_network.nodes.data("color")).values(),
-            edge_color = [color for _, _, color in self.crime_network.edges.data("color")],
+
+        nx.draw(g, pos=self.layout, 
+            ax=self.ax, node_color = dict(g.nodes.data("color")).values(),
+            edge_color = [color for _, _, color in g.edges.data("color")],
             **kwargs)
         self.ax.set_axis_off()
         self.ax.set_title(self.title, fontsize=30)

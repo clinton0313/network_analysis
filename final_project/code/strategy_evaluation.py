@@ -108,9 +108,9 @@ with open(os.path.join("data", "processed_data", "giant_component_crime_networks
 graphs.pop(6) #omit paul_revere set. 
 
 models = {constant_model:{"c":0.05, "weighted":True}}
-strategies = {uncentral_greedy:{}}
+strategies = {uncentral_greedy:{"mode":"degree"}}
 model_names = ["Constant"]
-strategy_names = ["Uncentral Greedy"]
+strategy_names = ["Uncentral Degree Greedy"]
 
 evaluate_strategies(graphs=graphs,
     sims=250,

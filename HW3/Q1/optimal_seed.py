@@ -206,7 +206,8 @@ class Investigation():
         if self.random_catch == "lambda":
             suspects = self.strategy(self.current_investigation)
             for suspect in suspects:
-                self._caught_suspect(suspect)
+                if suspect not in self.suspects and suspect not in self.caught:
+                    self._caught_suspect(suspect)
         else:
             suspect_probas = self.model_proba()
             self._set_probas(suspect_probas)

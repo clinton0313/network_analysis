@@ -170,8 +170,8 @@ def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
         centrality_dict = dict(graph.degree)
     connected_criminals = [linked for linked in graph.neighbors(suspect) \
         if graph.nodes[linked].get("caught") and graph[suspect][linked].get("informed")]
-    eigenvalues = [centrality_dict[connected] for connected in connected_criminals]
-    return np.sum(eigenvalues)
+    centrality = [centrality_dict[connected] for connected in connected_criminals]
+    return np.sum(centrality)
 
 
 
@@ -179,13 +179,13 @@ def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
 
 # #FOR TESTING
 
-# with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
-#     graphs = pickle.load(infile)
-# graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
-# g = graphs[8]
-# inv = Investigation(g)
-# inv.set_model(constant_model, c = 0.05)
-# inv.set_strategy(uncentral_greedy)
-# inv.simulate(20, 200, update_plot=True, sleep_time= 1)
-# plt.pause(10)
+with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
+    graphs = pickle.load(infile)
+graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
+g = graphs[8]
+inv = Investigation(g)
+inv.set_model(constant_model, c = 0.05)
+inv.set_strategy(uncentral_greedy, mode="degree")
+inv.simulate(20, 200, update_plot=True, investigation_only=True, sleep_time= 0.5)
+plt.pause(10)
 # %%
