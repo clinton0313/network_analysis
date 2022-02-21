@@ -1,22 +1,19 @@
 #%%
 import pickle, os, matplotlib
-from turtle import update
 import networkx as nx
 import pandas as pd
 import numpy as np
 from functools import partial
 import matplotlib.pyplot as plt
 from time import sleep
-from typing import Callable, DefaultDict
+from typing import Callable, DefaultDict, Sequence
 from random import choice
-import keyboard
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 #%%
 class Investigation():
-    def __init__(self, crime_network:nx.Graph, random_catch:float=0.05, model:Callable = None, 
-        strategy:Callable = None, first_criminal:int = None, compute_eigen = True, title:str = "", caught_color:str="black",
+    def __init__(self, crime_network:nx.Graph, random_catch=0.05, first_criminal:int = None, compute_eigen = True, title:str = "", caught_color:str="black",
         suspect_color:str="red", criminal_color:str="blue", informed_color:str="orange", non_gc = False):
         '''
         Class to handle investigations simulations of criminal networks. Main method is to either call investigate or simulation to run investigate in a loop.
@@ -24,13 +21,8 @@ class Investigation():
 
         Args:
             crime_network: Undirected, weighted graph. Optional graph property "name" will be used for plotting.
-            random_catch: Probability of catching a random criminal with no information.
-            inform_prob: Probability of caught criminal informing. 
-            model: Underlying model that determines the probability of catching suspects. Function should take a graph of suspects and known criminals as an argument
-                and return a dictionary of probabilities corresponding to {suspect: probability}
-            strategy: Underlying algorithmn that investigate will use. Function should take at least a graph of suspects and known criminals as an argument and return a 
-                suspect (int) and probability of capture (float) in that order. To use more arguments, use set_strategy method. Return string "random" in place of the suspect
-                and an artbitrary value for p to catch a random unknown criminal instead.
+            random_catch: Base probability of catching a criminal. Either a float (uniform for all criminals) or a 
+                dictionary of probabilties {node: probability}
             first_criminal: Optionally initialize the first criminal otherwise a random criminal will be used
             compute_eigen: Computes and stores the eigenvector centrality in handle "eigen" upon init. 
             title: Title used for plotting of graph.
@@ -47,7 +39,7 @@ class Investigation():
             set_layout: Set plotting layout.
         
         Attributes:
-            investigations, caught, suspects, fig, ax, title. 
+            investigations, caught, suspects, log, fig, ax, title. 
         '''
         #Network intiializationa and attributes
         components = list(nx.connected_components(crime_network))
@@ -65,7 +57,17 @@ class Investigation():
         self.total_eigen = None
         if compute_eigen:
             self._compute_eigen_centrality()
-        self.random_catch = random_catch
+        
+        if isinstance(random_catch, float):
+            assert 0<= random_catch <= 1, f"Random Catch needs to be a valid probability but got {random_catch}"
+            self.random_catch = random_catch
+        elif isinstance(random_catch, dict):
+            assert set(random_catch.keys()) == set(self.crime_network.nodes), f"Random Catch dictionary does not include all nodes."
+            assert all([isinstance(x, (float, int)) for x in random_catch.values()]), f"Random Catch dictionary can only be int or float"
+            assert all(np.array(list(random_catch.values())) <= 1) and all(np.array(list(random_catch.values())) >= 0), "Not all probabilities are valid probabilities"
+            self.random_catch = random_catch
+        else:
+            raise Exception(f"Need to pass either a float or dict for random_catch probabilities, instead got {random_catch}")
 
         self.investigations = 1
         self.caught = []
@@ -75,11 +77,9 @@ class Investigation():
         self.current_investigation = None
         if first_criminal == None:
             first_criminal = choice(list(self.crime_network.nodes))
-        if model == None:
-            self.model_proba = None
-        else:
-            self.model_proba = partial(model, self.current_investigation)
-        self.strategy = strategy
+
+        self.model_proba = None
+        self.strategy = None
         
         #Plotting attributes
         if title == "":
@@ -116,20 +116,19 @@ class Investigation():
             print("No underlying model is defined. Please define model using set_model method.")
             return False
 
-    def _set_probas(self, suspect_probas:dict = {}):
+    def _set_probas(self, suspect_probas:dict={}):
         '''Set new capture probabilities'''
-        nx.set_node_attributes(self.crime_network, self.random_catch, name="catch_proba")
+        nx.set_node_attributes(self.crime_network, self.random_catch, name="random_catch")
         caught_probas = {node : 0 for node, attr in self.crime_network.nodes.data() if attr["caught"] == True}
-        suspect_probas = {suspect : (proba + self.random_catch) for suspect, proba in suspect_probas.items()}
         nx.set_node_attributes(self.crime_network, suspect_probas, name="catch_proba")
         nx.set_node_attributes(self.crime_network, caught_probas, name="catch_proba")
 
     def _catch_random(self):
         '''Catch a random unsuspected criminal'''
-        if np.random.uniform() < self.random_catch:
-            unsuspected = [node for node, suspected in list(self.crime_network.nodes(data="suspected")) if not suspected]
-            caught = choice(unsuspected)
-            self._caught_suspect(caught, random = True)
+        unsuspected = [node for node, suspected in list(self.crime_network.nodes(data="suspected")) if not suspected]
+        candidate = choice(unsuspected)
+        if np.random.uniform < self.crime_network.nodes[candidate]["random_catch"]:
+            self._caught_suspect(candidate, random = True)
 
     def _caught_suspect(self, suspect:int, random = False):
         '''Update graph properties when suspect is caught'''
@@ -176,8 +175,7 @@ class Investigation():
 
     def set_strategy(self, strategy:Callable, **kwargs):
         '''Sets investigation strategy. Function should take at least a graph of suspects and known criminals as an argument and return a 
-            suspect (int) and probability of capture (float) in that order. Return string "random" in place of the suspect and an artbitrary value for p
-            to catch a random unknown criminal instead.'''
+            suspect (int) or string "random" in place of the suspect to catch a random unknown criminal instead.'''
         self.strategy =  partial(strategy, **kwargs)
     
     def set_layout(self, pos):
@@ -197,11 +195,12 @@ class Investigation():
         #Set probabilities of the model
         suspect_probas = self.model_proba()
         self._set_probas(suspect_probas)
-        suspect, p = self.strategy(self.current_investigation)
+        suspect = self.strategy(self.current_investigation)
         
         if suspect == "random":
             self._catch_random()
-        elif np.random.uniform() < p:
+        elif np.random.uniform() < self.crime_network.nodes[suspect]["catch_proba"] \
+            + self.crime_network.nodes[suspect]["random_catch"]:
             self._caught_suspect(suspect)
         self.investigations += 1
         self._log_stats()
