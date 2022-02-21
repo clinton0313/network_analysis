@@ -46,6 +46,17 @@ def get_nearby_suspects(graph:nx.Graph, centroids: list):
         candidates.extend(candidate_suspects)
     return candidates
 
+def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
+    '''For the suspect return the sum of all connected criminals' eigenvector centralities'''
+    if mode == "eigen":
+        centrality_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
+    elif mode =="degree":
+        centrality_dict = dict(graph.degree)
+    connected_criminals = [linked for linked in graph.neighbors(suspect) \
+        if graph.nodes[linked].get("caught") and graph[suspect][linked].get("informed")]
+    centrality = [centrality_dict[connected] for connected in connected_criminals]
+    return np.sum(centrality)
+
 #MODELS
 
 def exponential_model(graph, random_catch, lr, weighted=True):
@@ -138,7 +149,7 @@ def least_central_criminal(graph:nx.Graph, suspects = None, use_eigen=True, weig
     #Should try to adjust this strategy to balance these choices and maximizing capture probability due to inforomation. 
     
 
-def uncentral_greedy(graph:nx.Graph, mode="eigen", weighted=True):
+def uncentral_greedy(graph:nx.Graph, mode:str="eigen", weighted:bool=True):
     '''Greedy search but break ties using least central adjacent criminal''' #Need to verify. 
     suspects = get_suspects(graph)
     suspect_proba = get_suspect_proba(graph, suspects)
@@ -161,17 +172,80 @@ def uncentral_greedy(graph:nx.Graph, mode="eigen", weighted=True):
         suspect = choice(final_candidates)
         return suspect[0], suspect[1]
 
+def max_diameter(graph:nx.Graph): #Should make an adjustment for greediness sliding score between proba and diameter.
+    '''Search by maximum diameter of caught criminals'''
+    suspects = get_suspects(graph)
+    suspect_proba = get_suspect_proba(graph, suspects)
 
-def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
-    '''For the suspect return the sum of all connected criminals' eigenvector centralities'''
-    if mode == "eigen":
-        centrality_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
-    elif mode =="degree":
-        centrality_dict = dict(graph.degree)
-    connected_criminals = [linked for linked in graph.neighbors(suspect) \
-        if graph.nodes[linked].get("caught") and graph[suspect][linked].get("informed")]
-    centrality = [centrality_dict[connected] for connected in connected_criminals]
-    return np.sum(centrality)
+    #Get potential diameter if the suspect is included in the caught_criminals
+    caught = get_caught_criminals(graph)
+
+    suspected_diameter = get_potential_diam(graph, suspects, caught)
+    
+    #Filter for maximum diameter
+    candidate_list = {suspect:proba 
+        for suspect, proba, diameter in zip(suspects, suspect_proba, suspected_diameter) 
+        if diameter == max(suspected_diameter)}
+    #Filter for greediest choice
+    candidate_list = [(suspect, proba) for suspect, proba in candidate_list.items() if proba == max(candidate_list.values())]
+    #Random selection if still multiple
+    candidate = choice(candidate_list)
+
+    return candidate[0], candidate[1]
+
+def get_potential_diam(graph, suspects, caught):
+    suspected_diameter = []
+    for suspect in suspects:
+        potential_graph = nx.subgraph_view(graph, filter_node = lambda x: True if x in caught or x== suspect else False)
+        suspected_diameter.append(nx.diameter(potential_graph))
+    return suspected_diameter
+
+def greedy_diameter(graph:nx.Graph): #NEED TO TEST
+    '''Greedy search and break ties by maximum diameter of caught criminals'''
+    suspects = get_suspects(graph)
+    suspect_proba = get_suspect_proba(graph, suspects)
+
+    #Filter for greediest choice
+    candidate_list = [(suspect, proba) for suspect, proba in zip(suspects, suspect_proba) if proba == max(suspect_proba)]
+    candidate_suspects = [suspect for suspect, _ in candidate_list] 
+    #Get potential diameter if the suspect is included in the caught_criminals
+    caught = get_caught_criminals(graph)
+    suspected_diameter = get_potential_diam(graph, candidate_suspects, caught)
+
+    #Filter for maximum diameter
+    candidates, probas = zip(*candidate_list)
+    candidate_list = [(suspect, proba) 
+        for suspect, proba, diameter in zip(candidates, probas, suspected_diameter) 
+        if diameter == max(suspected_diameter)]
+    
+    #Random selection if still multiple
+    candidate = choice(candidate_list)
+
+    return candidate[0], candidate[1]
+
+def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False): #NEED TO TEST
+    '''Search by weighted score between potential diameter. Diameter is already divided by tenth to normalize a bit. Alpha should be between 0 and 1. 
+    Larger alpha weights diameter more (depth first) and smaller weights greediness more (breadth first)'''
+
+    assert 0 <= alpha <= 1, f"alpha should be between 0 and 1, instead got {alpha}"
+
+    suspects = get_suspects(graph)
+    suspect_proba = get_suspect_proba(graph, suspects)
+
+    #Get potential diameter if the suspect is included in the caught_criminals and information of suspects
+    caught = get_caught_criminals(graph)
+    suspected_diameter = get_potential_diam(graph, suspects, caught)
+    suspect_info = get_information(graph, suspects, weighted=weighted)
+
+    #Compute scores as weighted average between one tenth of diameter and info. Get max score canddiates
+    scores = [proba * (1 - alpha) + diam * 0.1 * alpha for diam, proba in zip(suspected_diameter, suspect_proba)]
+    candidate_list = [(suspect, proba) for suspect, proba, score in zip(suspects, suspect_proba, scores) if score == max(scores)]
+    
+    #Random selection if still multiple
+    candidate = choice(candidate_list)
+
+    return candidate[0], candidate[1]
+
 
 
 
@@ -179,13 +253,13 @@ def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
 
 # #FOR TESTING
 
-with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
-    graphs = pickle.load(infile)
-graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
-g = graphs[8]
-inv = Investigation(g)
-inv.set_model(constant_model, c = 0.05)
-inv.set_strategy(uncentral_greedy, mode="degree")
-inv.simulate(20, 200, update_plot=True, investigation_only=True, sleep_time= 0.5)
-plt.pause(10)
+# with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
+#     graphs = pickle.load(infile)
+# graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
+# g = graphs[11]
+# inv = Investigation(g)
+# inv.set_model(constant_model, c = 0.05)
+# inv.set_strategy(simple_greedy)
+# inv.simulate(20, 200, update_plot=True, investigation_only=True, sleep_time= 0.5)
+# plt.pause(10)
 # %%
