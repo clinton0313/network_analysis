@@ -201,14 +201,14 @@ def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False)
 
 #FOR TESTING
 
-with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
-    graphs = pickle.load(infile)
-graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
-g = graphs[11]
-random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
-inv = Investigation(g, random_catch=random_catch)
-inv.set_model(constant_model, c = 0.05)
-inv.set_strategy(max_diameter)
-inv.simulate(20, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
-plt.pause(10)
+# with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
+#     graphs = pickle.load(infile)
+# graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
+# g = graphs[11]
+# random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
+# inv = Investigation(g, random_catch=random_catch)
+# inv.set_model(constant_model, c = 0.05)
+# inv.set_strategy(max_diameter)
+# inv.simulate(20, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
+# plt.pause(10)
 # %%

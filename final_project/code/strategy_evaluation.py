@@ -1,7 +1,6 @@
 #%%
 from investigation import Investigation
-from models_and_strategies import least_central, constant_model, exponential_model, \
-    simple_greedy, least_central_criminal, uncentral_greedy, max_diameter, balanced_diameter, greedy_diameter
+from models_and_strategies import constant_model, simple_greedy,  max_diameter, balanced_diameter, greedy_diameter
 import pickle, os, matplotlib
 from time import sleep
 import matplotlib.pyplot as plt
@@ -109,9 +108,26 @@ with open(os.path.join("data", "processed_data", "giant_component_crime_networks
 graphs.pop(6) #omit paul_revere set. 
 
 models = {constant_model:{"c":0.05, "weighted":True}}
-strategies = {greedy_diameter:{}, max_diameter:{}, balanced_diameter: {}, simple_greedy:{}}
+strategies = {greedy_diameter:{}, max_diameter:{}, simple_greedy:{}, balanced_diameter:{}}
 model_names = ["Constant"]
-strategy_names = ["Greedy Diameter", "Max Diameter", "Balanced Diameter - alpha = 0.5", "Simple Greedy"]
+strategy_names = ["Greedy Diameter", "Max Diameter", "Simple Greedy", "Balanced Diameter - alpha = 0.5"]
+
+
+evaluate_strategies(graphs=graphs,
+    sims=50,
+    max_criminals=400,
+    max_investigations=100,
+    models=models,
+    model_names=model_names,
+    strategies=strategies,
+    strategy_names=[name + "_normalized" for name in strategy_names],
+    y="eigen_proportion",
+    ymin = 0, ymax = 1, xmax = 100,
+    ylabel="EC Captured",
+    color="blue",
+    alpha=0.4)
+
+
 
 evaluate_strategies(graphs=graphs,
     sims=50,
@@ -126,6 +142,5 @@ evaluate_strategies(graphs=graphs,
     ylabel="EC Captured",
     color="blue",
     alpha=0.4)
-
 
 # %%
