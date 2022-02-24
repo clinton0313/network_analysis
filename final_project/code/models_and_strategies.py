@@ -142,18 +142,18 @@ def max_diameter(graph:nx.Graph, weighted:bool=True): #Should make an adjustment
     
     #Filter for maximum diameter
     candidate_list = {suspect: info
-        for suspect, info, diameter in zip(suspects, information, suspected_diameter) 
-        if diameter == max(suspected_diameter)}
+        for suspect, info, diameter in zip(suspects, information, suspected_diameter.values()) 
+        if diameter == max(suspected_diameter.values())}
     #Filter for greediest choice
     candidate_list = [suspect for suspect, info in candidate_list.items() if info == max(candidate_list.values())]
     #Random selection if still multiple
     return choice(candidate_list)
 
 def get_potential_diam(graph, suspects, caught):
-    suspected_diameter = []
+    suspected_diameter = {}
     for suspect in suspects:
         potential_graph = nx.subgraph_view(graph, filter_node = lambda x: True if x in caught or x== suspect else False)
-        suspected_diameter.append(nx.diameter(potential_graph))
+        suspected_diameter[suspect] = nx.diameter(potential_graph)
     return suspected_diameter
 
 def greedy_diameter(graph:nx.Graph, weighted:bool = True): #NEED TO TEST
@@ -169,7 +169,7 @@ def greedy_diameter(graph:nx.Graph, weighted:bool = True): #NEED TO TEST
     suspected_diameter = get_potential_diam(graph, candidate_suspects, caught)
 
     #Filter for maximum diameter
-    final_candidates = [suspect for suspect, diam in zip(candidate_suspects, suspected_diameter) if diam == max(suspected_diameter)]
+    final_candidates = [suspect for suspect, diam in suspected_diameter.items() if diam == max(suspected_diameter.values())]
     
     #Random selection if still multiple
     return choice(final_candidates)
@@ -188,13 +188,43 @@ def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False)
     suspected_diameter = get_potential_diam(graph, suspects, caught)
 
     #Compute scores as weighted average between one tenth of diameter and info. Get max score canddiates
-    scores = [info * (1 - alpha) + diam * alpha for diam, info in zip(suspected_diameter, information)]
+    scores = [info * (1 - alpha) + diam * alpha for diam, info in zip(suspected_diameter.values(), information)]
     candidate_list = [suspect for suspect, score in zip(suspects, scores) if score == max(scores)]
     
     #Random selection if still multiple
     return choice(candidate_list)
 
 
+def greedy(graph:nx.Graph, tiebreaker = "random", weighted:bool = True): #NEEDS TO BE TESTED - SOMOETHING DOESNT WORK TRIANGLES AT LEAST
+    '''Greedy search and break ties by maximum diameter of caught criminals'''
+    assert tiebreaker in ["random", "eigenvector", "diameter", "triangles"], \
+        f"Invalid tiebreaker strategy. Got {tiebreaker} and expected one of: random, eigenvector, triangles"
+
+    suspects = get_suspects(graph)
+    information = get_information(graph, suspects, weighted)
+
+    #Filter for greediest choice
+    candidate_suspects = [suspect for suspect, info in zip(suspects, information) if info == max(information)]
+
+    #Get potential diameter if the suspect is included in the caught_criminals
+    if tiebreaker == "random":
+        return choice(candidate_suspects)
+    elif tiebreaker=="diameter":
+        caught = get_caught_criminals(graph)
+        tiebreak_dict = get_potential_diam(graph, candidate_suspects, caught)
+    elif tiebreaker == "eigenvector":
+        tiebreak_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
+    elif tiebreaker == "triangles":
+        tiebreak_dict = nx.triangles(graph)
+
+    final_candidates = [suspect for suspect, score in tiebreak_dict.items() if score == max(tiebreak_dict.values())]
+    #Random selection if still multiple
+    return choice(final_candidates)
+
+def naive_random(graph:nx.Graph):
+    '''Completely random choice of suspects'''
+    suspects = get_suspects(graph)
+    return choice(suspects)
 
 
 #%%
@@ -208,7 +238,7 @@ def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False)
 # random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
 # inv = Investigation(g, random_catch=random_catch)
 # inv.set_model(constant_model, c = 0.05)
-# inv.set_strategy(max_diameter)
+# inv.set_strategy(greedy, tiebreaker="triangles")
 # inv.simulate(20, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
 # plt.pause(10)
 # %%
