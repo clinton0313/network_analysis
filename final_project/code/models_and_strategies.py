@@ -195,7 +195,7 @@ def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False)
     return choice(candidate_list)
 
 
-def greedy(graph:nx.Graph, tiebreaker = "random", weighted:bool = True): #NEEDS TO BE TESTED - SOMOETHING DOESNT WORK TRIANGLES AT LEAST
+def greedy(graph:nx.Graph, tiebreaker = "random", weighted:bool = True):
     '''Greedy search and break ties by maximum diameter of caught criminals'''
     assert tiebreaker in ["random", "eigenvector", "diameter", "triangles"], \
         f"Invalid tiebreaker strategy. Got {tiebreaker} and expected one of: random, eigenvector, triangles"
@@ -239,6 +239,6 @@ def naive_random(graph:nx.Graph):
 # inv = Investigation(g, random_catch=random_catch)
 # inv.set_model(constant_model, c = 0.05)
 # inv.set_strategy(greedy, tiebreaker="triangles")
-# inv.simulate(20, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
+# inv.simulate(20, 200, update_plot=False, investigation_only=False, sleep_time= 0.5)
 # plt.pause(10)
 # %%
