@@ -48,12 +48,15 @@ def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
 
 #MODELS
 
-def constant_model(graph, c, weighted=True):
+def constant_model(graph:nx.Graph, c:float, weighted:bool=True):
     '''Each informative link adds a constant amount of information'''
+    assert 0 <= c <= 1, f"c needs to be a valid probability, instead got {c}"
+
     suspects = get_suspects(graph)
     information = get_information(graph, suspects, weighted)
     suspect_proba = {suspect : min(1, c * info) for suspect, info in zip(suspects, information)}
     return suspect_proba
+
 
 #STRATEGIES
 
