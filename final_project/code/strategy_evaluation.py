@@ -1,6 +1,6 @@
 #%%
 from investigation import Investigation
-from models_and_strategies import constant_model, simple_greedy,  max_diameter, balanced_diameter, greedy_diameter
+from models_and_strategies import constant_model, max_diameter, balanced_diameter, greedy
 import pickle, os, matplotlib
 from time import sleep
 import matplotlib.pyplot as plt
@@ -105,29 +105,13 @@ def evaluate_strategies(graphs:list, sims:int, max_criminals:int, max_investigat
 with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
     graphs = pickle.load(infile)
 
+
 graphs.pop(6) #omit paul_revere set. 
 
 models = {constant_model:{"c":0.05, "weighted":True}}
-strategies = {greedy_diameter:{}, max_diameter:{}, simple_greedy:{}, balanced_diameter:{}}
+strategies = {greedy:{"tiebreaker":"eigenvector"}, greedy:{"tiebreaker":"triangles"}}
 model_names = ["Constant"]
-strategy_names = ["Greedy Diameter", "Max Diameter", "Simple Greedy", "Balanced Diameter - alpha = 0.5"]
-
-
-evaluate_strategies(graphs=graphs,
-    sims=50,
-    max_criminals=400,
-    max_investigations=100,
-    models=models,
-    model_names=model_names,
-    strategies=strategies,
-    strategy_names=[name + "_normalized" for name in strategy_names],
-    y="eigen_proportion",
-    ymin = 0, ymax = 1, xmax = 100,
-    ylabel="EC Captured",
-    color="blue",
-    alpha=0.4)
-
-
+strategy_names = ["Greedy eigenvector", "Greedy triangles"]
 
 evaluate_strategies(graphs=graphs,
     sims=50,
