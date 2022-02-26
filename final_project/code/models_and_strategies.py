@@ -48,23 +48,17 @@ def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
 
 #MODELS
 
-def constant_model(graph, c, weighted=True):
+def constant_model(graph:nx.Graph, c:float, weighted:bool=True):
     '''Each informative link adds a constant amount of information'''
+    assert 0 <= c <= 1, f"c needs to be a valid probability, instead got {c}"
+
     suspects = get_suspects(graph)
     information = get_information(graph, suspects, weighted)
     suspect_proba = {suspect : min(1, c * info) for suspect, info in zip(suspects, information)}
     return suspect_proba
 
-#STRATEGIES
 
-def simple_greedy(graph:nx.Graph, weighted:bool=True):
-    '''Of highest probability suspects, take a random one.'''
-    suspects = get_suspects(graph)
-    information = get_information(graph, suspects, weighted=weighted)
-    if len(suspects) == 0:
-        return "random"
-    candidate_suspects = [suspect for suspect, info in zip(suspects, information) if info == max(information)]
-    return choice(candidate_suspects)
+#STRATEGIES
 
 def least_central_criminal(graph:nx.Graph, suspects = None, use_eigen=True, weighted = True): #SHOULD BE RETESTED IF USED
     '''
@@ -156,24 +150,6 @@ def get_potential_diam(graph, suspects, caught):
         suspected_diameter[suspect] = nx.diameter(potential_graph)
     return suspected_diameter
 
-def greedy_diameter(graph:nx.Graph, weighted:bool = True): #NEED TO TEST
-    '''Greedy search and break ties by maximum diameter of caught criminals'''
-    suspects = get_suspects(graph)
-    information = get_information(graph, suspects, weighted)
-
-    #Filter for greediest choice
-    candidate_suspects = [suspect for suspect, info in zip(suspects, information) if info == max(information)]
-
-    #Get potential diameter if the suspect is included in the caught_criminals
-    caught = get_caught_criminals(graph)
-    suspected_diameter = get_potential_diam(graph, candidate_suspects, caught)
-
-    #Filter for maximum diameter
-    final_candidates = [suspect for suspect, diam in suspected_diameter.items() if diam == max(suspected_diameter.values())]
-    
-    #Random selection if still multiple
-    return choice(final_candidates)
-
 def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False): #NEED TO TEST
     '''Search by weighted score between potential diameter. Diameter is already divided by tenth to normalize a bit. Alpha should be between 0 and 1. 
     Larger alpha weights diameter more (depth first) and smaller weights greediness more (breadth first)'''
@@ -195,8 +171,19 @@ def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False)
     return choice(candidate_list)
 
 
-def greedy(graph:nx.Graph, tiebreaker = "random", weighted:bool = True): #NEEDS TO BE TESTED - SOMOETHING DOESNT WORK TRIANGLES AT LEAST
-    '''Greedy search and break ties by maximum diameter of caught criminals'''
+def greedy(graph:nx.Graph, tiebreaker = "random", weighted:bool = True):
+    '''Greedy search and break ties by maximum diameter of caught criminals
+    Args:
+        graph: Graph of the current investigation.
+        tiebreaker: Accepts "random", "eigenvector", "diameter", "triangles". 
+            random: Breaks ties at random.
+            eigenvector: Breaks tie wiht highest perceived eigenvector centrality.
+            diameter: Breaks tie by the maximum diameter of the graph of criminals if the considered suspect is added.
+            triangles: Breaks tie by the maximum number of triangles of the graph of criminals if the considered suspect is added.
+        weighted: Consider the graph weighted or not.
+    Returns:
+        Suspect index.
+    '''
     assert tiebreaker in ["random", "eigenvector", "diameter", "triangles"], \
         f"Invalid tiebreaker strategy. Got {tiebreaker} and expected one of: random, eigenvector, triangles"
 
@@ -213,11 +200,17 @@ def greedy(graph:nx.Graph, tiebreaker = "random", weighted:bool = True): #NEEDS 
         caught = get_caught_criminals(graph)
         tiebreak_dict = get_potential_diam(graph, candidate_suspects, caught)
     elif tiebreaker == "eigenvector":
-        tiebreak_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
+        try:
+            tiebreak_dict = nx.eigenvector_centrality_numpy(graph, weight=lambda _: "weight" if weighted else None)
+        except TypeError:
+            tiebreak_dict = nx.eigenvector_centrality(graph, weight=lambda _: "weight" if weighted else None)
     elif tiebreaker == "triangles":
         tiebreak_dict = nx.triangles(graph)
 
-    final_candidates = [suspect for suspect, score in tiebreak_dict.items() if score == max(tiebreak_dict.values())]
+    tiebreak_dict = {candidate: tiebreak_dict[candidate] for candidate in candidate_suspects}
+    final_candidates = [candidate for candidate, score in tiebreak_dict.items() 
+        if np.abs(score - max(tiebreak_dict.values())) <= 1e-4]
+
     #Random selection if still multiple
     return choice(final_candidates)
 
@@ -238,7 +231,7 @@ def naive_random(graph:nx.Graph):
 # random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
 # inv = Investigation(g, random_catch=random_catch)
 # inv.set_model(constant_model, c = 0.05)
-# inv.set_strategy(greedy, tiebreaker="triangles")
+# inv.set_strategy(greedy, tiebreaker="eigenvector")
 # inv.simulate(20, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
 # plt.pause(10)
 # %%

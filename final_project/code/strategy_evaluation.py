@@ -1,19 +1,16 @@
 #%%
 from investigation import Investigation
-from models_and_strategies import constant_model, simple_greedy,  max_diameter, balanced_diameter, greedy_diameter
+from models_and_strategies import constant_model, max_diameter, balanced_diameter, greedy, naive_random
 import pickle, os, matplotlib
 from time import sleep
 import matplotlib.pyplot as plt
 import networkx as nx
-from typing import Tuple
+from typing import Tuple, Union, Sequence
 from tqdm import tqdm
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
 #%%
-
-#Are we sure the algorithm proceeds as we expect??? SANITY CHECK PLEASE
-
 def plot_simulations(investigation:Investigation, sims:int, max_criminals:int, max_investigations:int, 
     x:str="investigation", y:str="eigen_proportion", title="", xlabel="Investigations", ylabel="",
     ymax:float = 0, ymin:float = 0, xmax:float = 0, xmin: float = 0, figsize:Tuple=(16,16), **kwargs):
@@ -50,13 +47,13 @@ def plot_simulations(investigation:Investigation, sims:int, max_criminals:int, m
     return fig, ax
 
 
-def evaluate_strategies(graphs:list, sims:int, max_criminals:int, max_investigations:int, 
+def evaluate_strategies(investigations:list, sims:int, max_criminals:int, max_investigations:int, savepath:str,
     models:dict, model_names:list, strategies:dict, strategy_names:list, overwrite:bool=False, **plot_kwargs):
     '''
     Evaluate many strategies and save plots by calling plot_simulation().
 
         Args:
-            graphs: A list of networkx graphs to be evaluated
+            investiagions: A list of Investigation classes of networkx graphs to be evaluated
             sims: Number of simulations per graph.
             max_criminals, max_investigations: Stopping conditions for simulations. Both need to be met.
             models: Dictionary of model (functions) to model parameters in dictionary format.
@@ -75,18 +72,18 @@ def evaluate_strategies(graphs:list, sims:int, max_criminals:int, max_investigat
     #Create filepaths and directories for storing figures. 
     filepaths = {strat: strat.lower().replace(" ", "_") for strat in strategy_names}
     for filepath in filepaths.values():
-        os.makedirs(os.path.join("figs", "simulations", filepath), exist_ok=True)
+        os.makedirs(os.path.join(savepath, filepath), exist_ok=True)
 
     for model_name, (model, model_params) in zip(model_names, models.items()):
         for strat_name, (strategy, strategy_params) in zip(strategy_names, strategies.items()):
-            savepath = os.path.join("figs", "simulations", filepaths[strat_name])
-            for graph in tqdm(graphs, desc="Investigating graph: ", position=1, colour="green"):
-                filename = f"{graph.graph['name']}_{filepaths[strat_name]}_{model_name.lower().replace(' ','')}.png"
+            strat_dirpath = os.path.join(savepath, filepaths[strat_name])
+
+            for inv in tqdm(investigations, desc="Investigating graph: ", position=1, colour="green"):
+                filename = f"{inv.crime_network.graph['name']}_{filepaths[strat_name]}_{model_name.lower().replace(' ','')}.png"
                 #Skip if graph already generated
-                if os.path.exists(os.path.join(savepath, filename)) and not overwrite:
+                if os.path.exists(os.path.join(strat_dirpath, filename)) and not overwrite:
                     continue
                 #Instnatiate investigation, set model and strategy.
-                inv = Investigation(graph)
                 inv.set_model(model, **model_params)
                 inv.set_strategy(strategy, **strategy_params)
                 #Plot and save figure.
@@ -96,9 +93,41 @@ def evaluate_strategies(graphs:list, sims:int, max_criminals:int, max_investigat
                     fontsize=20)
                 ax.spines["right"].set_visible(False)
                 ax.spines["top"].set_visible(False)
-                fig.savefig(os.path.join(savepath, filename), facecolor="white", transparent=False)
+                fig.savefig(os.path.join(strat_dirpath, filename), facecolor="white", transparent=False)
                 fig.clear()
                 plt.close()
+
+
+def inverse_eigen_probas(graph:nx.Graph, min_proba:float= 0.025, max_proba:float=0.075, weighted:bool=True) -> dict:
+    '''
+    Creates base probabilities based on eigenvector centralities. The lower the eigenvector centrality, the 
+    higher the base probability. 
+    
+    Args:
+        graph: NetworkX Graph.
+        min_proba: Lower bound of base probabiltiies that eigenvector centralities are scaled to.
+        max_proba: Upper bound of base probabilities that eigenvector cenralities are sclaed to.
+        weighted: Consider graph as weighted.
+    Returns:
+        Dictionary of base probabilities {node: proba}    
+    '''
+    assert 0 <= max_proba <= 1, f"max_proba needs to be a valid probability, instead got {max_proba}"
+    assert 0 <= min_proba <= 1, f"min_proba needs to be a valid probaiblity, instead got {min_proba}"
+    #Get nodes and eigenvector centralities
+    nodes = list(graph.nodes)
+    try:
+        eigens = nx.eigenvector_centrality_numpy(graph, weight= lambda _: "weight" if weighted else None)
+    except TypeError:
+        eigens = nx.eigenvector_centrality(graph, weight=lambda _: "weight" if weighted else None)
+    
+    #Scale eigenvector centralities
+    scale = (max_proba - min_proba) / (max(eigens.values()) - min(eigens.values()))
+    scaled_eigens = {
+        s : max_proba - (eigen - min(eigens.values())) * scale
+        for s, eigen in eigens.items()
+        }
+    base_proba = {node : scaled_eigens[node] for node in nodes}
+    return base_proba
 
 #%%
 #Load graphs and set parameters. 
@@ -108,28 +137,14 @@ with open(os.path.join("data", "processed_data", "giant_component_crime_networks
 graphs.pop(6) #omit paul_revere set. 
 
 models = {constant_model:{"c":0.05, "weighted":True}}
-strategies = {greedy_diameter:{}, max_diameter:{}, simple_greedy:{}, balanced_diameter:{}}
+strategies = {greedy:{"tiebreaker":"triangles"}}
 model_names = ["Constant"]
-strategy_names = ["Greedy Diameter", "Max Diameter", "Simple Greedy", "Balanced Diameter - alpha = 0.5"]
+strategy_names = ["Greedy triangles"]
+savepath = os.path.join("figs", "simulations", "inverse_eigen")
+#Use inverse_eigen_probas here
+investigations = [Investigation(graph, random_catch = inverse_eigen_probas(graph)) for graph in graphs]
 
-
-evaluate_strategies(graphs=graphs,
-    sims=50,
-    max_criminals=400,
-    max_investigations=100,
-    models=models,
-    model_names=model_names,
-    strategies=strategies,
-    strategy_names=[name + "_normalized" for name in strategy_names],
-    y="eigen_proportion",
-    ymin = 0, ymax = 1, xmax = 100,
-    ylabel="EC Captured",
-    color="blue",
-    alpha=0.4)
-
-
-
-evaluate_strategies(graphs=graphs,
+evaluate_strategies(investigations=investigations,
     sims=50,
     max_criminals=400,
     max_investigations=100,
@@ -137,6 +152,7 @@ evaluate_strategies(graphs=graphs,
     model_names=model_names,
     strategies=strategies,
     strategy_names=strategy_names,
+    savepath=savepath,
     y="captured_eigen",
     ymin = 0, ymax = 0, xmax = 100,
     ylabel="EC Captured",
