@@ -1,13 +1,15 @@
 #%%
 from investigation import Investigation
 import pandas as pd
-import os, pickle, matplotlib
+import os, pickle, matplotlib 
 import networkx as nx
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import numpy as np
 from time import sleep
 from random import choice
+import math
+
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)),".."))
 #%%
@@ -25,6 +27,18 @@ def get_information(graph:nx.Graph, suspects:list, weighted:bool = True) -> dict
     '''Returns a list of degree for each suspect. If weighted, it will sum the edge weights, otherwise take the number
     of edges activated incident to each suspect.'''
     return [degree for _, degree in graph.degree(suspects, weight=lambda _: "weight" if weighted else None)]
+
+def get_investigations(graph:nx.Graph, suspects:list) -> dict:
+    '''Returns a list with number of investigations for each suspect.'''
+    investigations = nx.get_node_attributes(graph, "investigations")
+    investigations_suspect = {suspect: investigations[suspect] for suspect in suspects}
+    return list(investigations_suspect.values())
+
+def get_probas(graph:nx.Graph, suspects:list) -> dict:
+    '''Returns a list with starting catch probabilities for each suspect.'''
+    probas = inverse_eigen_probas(graph, weighted=True)
+    catch_probas = {suspect: probas[suspect] for suspect in suspects}
+    return list(catch_probas.values())
 
 def get_nearby_suspects(graph:nx.Graph, centroids: list):
     '''Gets all neighboring suspects of centroids'''
@@ -50,11 +64,22 @@ def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
 
 def constant_model(graph:nx.Graph, c:float, weighted:bool=True):
     '''Each informative link adds a constant amount of information'''
+
     assert 0 <= c <= 1, f"c needs to be a valid probability, instead got {c}"
 
     suspects = get_suspects(graph)
     information = get_information(graph, suspects, weighted)
     suspect_proba = {suspect : min(1, c * info) for suspect, info in zip(suspects, information)}
+    return suspect_proba
+
+def plus_minus_model(graph:nx.Graph, plus:float, minus:float, weighted:bool=True):
+    '''Probability of being caught chnages proportionally in number of degrees that are suspects (+)
+    and number of unsuccesssful investigations made (-)'''
+    suspects = get_suspects(graph)
+    information = get_information(graph, suspects, weighted)
+    investigations = get_investigations(graph, suspects)
+    catch_probas = get_probas(graph, suspects)
+    suspect_proba = {suspect : min(1, proba * ((1+plus)**info) * (minus**invest)) for suspect, proba, info, invest in zip(suspects, catch_probas, information, investigations)}
     return suspect_proba
 
 
@@ -223,15 +248,49 @@ def naive_random(graph:nx.Graph):
 #%%
 
 #FOR TESTING
+def inverse_eigen_probas(graph:nx.Graph, min_proba:float= 0.025, max_proba:float=0.075, weighted:bool=True) -> dict:
+    '''
+    Creates base probabilities based on eigenvector centralities. The lower the eigenvector centrality, the 
+    higher the base probability. 
+    
+    Args:
+        graph: NetworkX Graph.
+        min_proba: Lower bound of base probabiltiies that eigenvector centralities are scaled to.
+        max_proba: Upper bound of base probabilities that eigenvector cenralities are sclaed to.
+        weighted: Consider graph as weighted.
+    Returns:
+        Dictionary of base probabilities {node: proba}    
+    '''
+    assert 0 <= max_proba <= 1, f"max_proba needs to be a valid probability, instead got {max_proba}"
+    assert 0 <= min_proba <= 1, f"min_proba needs to be a valid probaiblity, instead got {min_proba}"
+    #Get nodes and eigenvector centralities
+    nodes = list(graph.nodes)
+    try:
+        eigens = nx.eigenvector_centrality_numpy(graph, weight= lambda _: "weight" if weighted else None)
+    except TypeError:
+        eigens = nx.eigenvector_centrality(graph, weight=lambda _: "weight" if weighted else None)
+    
+    #Scale eigenvector centralities
+    scale = (max_proba - min_proba) / (max(eigens.values()) - min(eigens.values()))
+    scaled_eigens = {
+       s : max_proba - (eigen - min(eigens.values())) * scale
+       for s, eigen in eigens.items()
+       }
+    # scaled_eigens = {s: -(2 * (eigen - min(eigens.values()))/(max(eigens.values()) - min(eigens.values())) - 1) for s, eigen in eigens.items()}
+    # scaled_eigens = {s: 1/(1 + math.exp(-eigen)) for s, eigen in scaled_eigens.items()}
+    base_proba = {node : scaled_eigens[node] for node in nodes}
+    return base_proba
 
-# with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
-#     graphs = pickle.load(infile)
-# graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
-# g = graphs[11]
-# random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
-# inv = Investigation(g, random_catch=random_catch)
-# inv.set_model(constant_model, c = 0.05)
-# inv.set_strategy(greedy, tiebreaker="eigenvector")
-# inv.simulate(20, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
-# plt.pause(10)
+
+with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
+    graphs = pickle.load(infile)
+graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
+g = graphs[4]
+random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
+inv = Investigation(g, random_catch=inverse_eigen_probas(g, 0.05, 0.5))
+inv.set_model(plus_minus_model, plus = 0.1, minus = 0.5)
+inv.set_strategy(greedy, tiebreaker="eigenvector")
+inv.simulate(100, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
+plt.pause(10)
+# %%
 # %%

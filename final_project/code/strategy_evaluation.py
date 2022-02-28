@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from typing import Tuple, Union, Sequence
 from tqdm import tqdm
+import math as math
 
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 
@@ -121,11 +122,12 @@ def inverse_eigen_probas(graph:nx.Graph, min_proba:float= 0.025, max_proba:float
         eigens = nx.eigenvector_centrality(graph, weight=lambda _: "weight" if weighted else None)
     
     #Scale eigenvector centralities
-    scale = (max_proba - min_proba) / (max(eigens.values()) - min(eigens.values()))
-    scaled_eigens = {
-        s : max_proba - (eigen - min(eigens.values())) * scale
-        for s, eigen in eigens.items()
-        }
+    #scale = (max_proba - min_proba) / (max(eigens.values()) - min(eigens.values()))
+    #scaled_eigens = {
+    #    s : max_proba - (eigen - min(eigens.values())) * scale
+    #    for s, eigen in eigens.items()
+    #    }
+    scaled_eigens = {s: 1 - ((eigen - min(eigens.values()))/(max(eigens.values()) - min(eigens.values()))) for s, eigen in eigens.items()}
     base_proba = {node : scaled_eigens[node] for node in nodes}
     return base_proba
 

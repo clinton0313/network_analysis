@@ -53,6 +53,7 @@ class Investigation():
         nx.set_edge_attributes(self.crime_network, False, "informed")
         nx.set_node_attributes(self.crime_network, criminal_color, "color")
         nx.set_edge_attributes(self.crime_network, informed_color, "color")
+        nx.set_node_attributes(self.crime_network, 0, "investigations")
         self.eigen = False
         self.total_eigen = None
         if compute_eigen:
@@ -202,6 +203,10 @@ class Investigation():
         elif np.random.uniform() < self.crime_network.nodes[suspect]["catch_proba"] \
             + self.crime_network.nodes[suspect]["random_catch"]:
             self._caught_suspect(suspect)
+            self.crime_network.nodes[suspect]["investigations"] += 1
+        elif np.random.uniform() >= self.crime_network.nodes[suspect]["catch_proba"] \
+            + self.crime_network.nodes[suspect]["random_catch"]:
+            self.crime_network.nodes[suspect]["investigations"] += 1
         self.investigations += 1
         self._log_stats()
 
@@ -293,6 +298,7 @@ class Investigation():
         nx.set_node_attributes(self.crime_network, False, "suspected")
         nx.set_node_attributes(self.crime_network, False, "caught")
         nx.set_edge_attributes(self.crime_network, False, "informed")
+        nx.set_edge_attributes(self.crime_network, 0, "investigations")
         nx.set_node_attributes(self.crime_network, self.criminal_color, "color")
         nx.set_edge_attributes(self.crime_network, self.informed_color, "color")
         self.investigations = 1
