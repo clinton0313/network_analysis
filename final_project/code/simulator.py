@@ -89,6 +89,7 @@ def log_simulations(sims:int, investigation:Investigation, max_criminals:int, ma
                 log["graph_name"] = kwargs.get("graph_name")
                 log["strategy_name"] = kwargs.get("strategy_name")
                 log["sim_run"] = sim
+                log["num_nodes"] = kwargs.get("graph_nodes")
             except:
                 pass
             results.append(log)
@@ -154,7 +155,8 @@ for strat, params in strategy_candidates.items():
             filename=f"{strat}_{graph.name}.pkl",
             overwrite=False,
             strategy_name=strat,
-            graph_name=graph.name
+            graph_name=graph.name,
+            graph_nodes=graph.number_of_nodes()
         )
 
 
