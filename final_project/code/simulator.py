@@ -72,7 +72,6 @@ def log_simulations(sims:int, investigation:Investigation, max_criminals:int, ma
         verbose: Print statement at each save. 
     '''
     results = []
-    create_log(dirpath=dirpath, filename="error_log.pkl", result=["Init."])
 
     if overwrite:
         try:
@@ -90,9 +89,8 @@ def log_simulations(sims:int, investigation:Investigation, max_criminals:int, ma
                 log["graph_name"] = kwargs.get("graph_name")
                 log["strategy_name"] = kwargs.get("strategy_name")
                 log["sim_run"] = sim
-            except Exception as e:
+            except:
                 pass
-                update_log(os.path.join(dirpath, "error_log.pkl"), result=[kwargs.get("strategy_name"), kwargs.get("graph_name"), sim, e], verbose=False)
             results.append(log)
             if sim % save_every == 0:
                 try:
@@ -147,10 +145,10 @@ for strat, params in strategy_candidates.items():
 
         # Run simulations, log results
         log_simulations(
-            sims=10, 
+            sims=500, 
             investigation=inv,
             max_criminals=300,
-            max_investigations=300,
+            max_investigations=1000,
             save_every=5,
             dirpath="logs",
             filename=f"{strat}_{graph.name}.pkl",
