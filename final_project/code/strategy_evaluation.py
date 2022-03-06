@@ -1,7 +1,7 @@
 #%%
 from investigation import Investigation
 from models_and_strategies import constant_model, max_diameter, balanced_diameter, greedy, naive_random
-import pickle, os, matplotlib
+import pickle, os, matplotlib, sys
 from time import sleep
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -122,12 +122,12 @@ def inverse_eigen_probas(graph:nx.Graph, min_proba:float= 0.025, max_proba:float
         eigens = nx.eigenvector_centrality(graph, weight=lambda _: "weight" if weighted else None)
     
     #Scale eigenvector centralities
-    #scale = (max_proba - min_proba) / (max(eigens.values()) - min(eigens.values()))
-    #scaled_eigens = {
+    # scale = (max_proba - min_proba) / (max(eigens.values()) - min(eigens.values()))
+    # scaled_eigens = {
     #    s : max_proba - (eigen - min(eigens.values())) * scale
     #    for s, eigen in eigens.items()
     #    }
-    scaled_eigens = {s: 1 - ((eigen - min(eigens.values()))/(max(eigens.values()) - min(eigens.values()))) for s, eigen in eigens.items()}
+    scaled_eigens = {s: 1 - ((eigen - min(eigens.values()))/(max(eigens.values()) - min(eigens.values()) + sys.float_info.min)) for s, eigen in eigens.items()}
     base_proba = {node : scaled_eigens[node] for node in nodes}
     return base_proba
 
@@ -146,19 +146,19 @@ savepath = os.path.join("figs", "simulations", "inverse_eigen")
 #Use inverse_eigen_probas here
 investigations = [Investigation(graph, random_catch = inverse_eigen_probas(graph)) for graph in graphs]
 
-evaluate_strategies(investigations=investigations,
-    sims=50,
-    max_criminals=400,
-    max_investigations=100,
-    models=models,
-    model_names=model_names,
-    strategies=strategies,
-    strategy_names=strategy_names,
-    savepath=savepath,
-    y="captured_eigen",
-    ymin = 0, ymax = 0, xmax = 100,
-    ylabel="EC Captured",
-    color="blue",
-    alpha=0.4)
+# evaluate_strategies(investigations=investigations,
+#     sims=50,
+#     max_criminals=400,
+#     max_investigations=100,
+#     models=models,
+#     model_names=model_names,
+#     strategies=strategies,
+#     strategy_names=strategy_names,
+#     savepath=savepath,
+#     y="captured_eigen",
+#     ymin = 0, ymax = 0, xmax = 100,
+#     ylabel="EC Captured",
+#     color="blue",
+#     alpha=0.4)
 
 # %%

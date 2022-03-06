@@ -60,6 +60,14 @@ def get_connected_centrality(graph, suspect, weighted, mode="eigen"):
     centrality = [centrality_dict[connected] for connected in connected_criminals]
     return np.sum(centrality)
 
+def get_potential_diam(graph, suspects, caught):
+    suspected_diameter = {}
+    for suspect in suspects:
+        potential_graph = nx.subgraph_view(graph, filter_node = lambda x: True if x in caught or x== suspect else False)
+        suspected_diameter[suspect] = nx.diameter(potential_graph)
+    return suspected_diameter
+
+
 #MODELS
 
 def constant_model(graph:nx.Graph, c:float, weighted:bool=True):
@@ -168,13 +176,6 @@ def max_diameter(graph:nx.Graph, weighted:bool=True): #Should make an adjustment
     #Random selection if still multiple
     return choice(candidate_list)
 
-def get_potential_diam(graph, suspects, caught):
-    suspected_diameter = {}
-    for suspect in suspects:
-        potential_graph = nx.subgraph_view(graph, filter_node = lambda x: True if x in caught or x== suspect else False)
-        suspected_diameter[suspect] = nx.diameter(potential_graph)
-    return suspected_diameter
-
 def balanced_diameter(graph:nx.Graph, alpha: float = 0.5, weighted:bool = False): #NEED TO TEST
     '''Search by weighted score between potential diameter. Diameter is already divided by tenth to normalize a bit. Alpha should be between 0 and 1. 
     Larger alpha weights diameter more (depth first) and smaller weights greediness more (breadth first)'''
@@ -282,15 +283,15 @@ def inverse_eigen_probas(graph:nx.Graph, min_proba:float= 0.025, max_proba:float
     return base_proba
 
 
-with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
-    graphs = pickle.load(infile)
-graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
-g = graphs[4]
-random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
-inv = Investigation(g, random_catch=inverse_eigen_probas(g, 0.05, 0.5))
-inv.set_model(plus_minus_model, plus = 0.1, minus = 0.5)
-inv.set_strategy(greedy, tiebreaker="eigenvector")
-inv.simulate(100, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
-plt.pause(10)
+# with open(os.path.join("data", "processed_data", "giant_component_crime_networks.pkl"), "rb") as infile:
+#     graphs = pickle.load(infile)
+# graph_names = [(i, g.graph["name"]) for i, g in enumerate(graphs)]
+# g = graphs[4]
+# random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in g.nodes}
+# inv = Investigation(g, random_catch=inverse_eigen_probas(g, 0.05, 0.5))
+# inv.set_model(plus_minus_model, plus = 0.1, minus = 0.5)
+# inv.set_strategy(greedy, tiebreaker="eigenvector")
+# inv.simulate(100, 200, update_plot=True, investigation_only=False, sleep_time= 0.5)
+# plt.pause(10)
 # %%
 # %%
