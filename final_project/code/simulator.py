@@ -120,11 +120,7 @@ graphs.pop(6) #omit paul_revere set.
 # %%
 # Strategies to evaluate
 strategy_candidates = {
-    # "naive_random": {"object_name": naive_random, "args": {}},
-    # "least_central": {"object_name": least_central_criminal, "args": {}},
     # "uncentral_greedy": {"object_name": uncentral_greedy, "args": {"mode": "eigen"}},
-    "greedy_random": {"object_name": greedy, "args" : {"tiebreaker": "random"}},
-    "greedy_eigenvector": {"object_name": greedy, "args" : {"tiebreaker": "eigenvector"}},
     "greedy_diameter": {"object_name": greedy, "args" : {"tiebreaker": "diameter"}},
     "greedy_triangles": {"object_name": greedy, "args" : {"tiebreaker": "triangles"}},
     # "max_diameter": {"object_name": max_diameter, "args": {}},
@@ -137,6 +133,7 @@ strategy_candidates = {
 
 for strat, params in strategy_candidates.items():
     for graph in graphs:
+        
     
         # Set up investigation framework
         random_catch = {node: float(np.random.normal(0.05, 0.01, 1)) for node in graph.nodes}
