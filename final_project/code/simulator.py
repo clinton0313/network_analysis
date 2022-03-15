@@ -120,19 +120,19 @@ graphs.pop(6) #omit paul_revere set.
 # %%
 # Strategies to evaluate
 strategy_candidates = {
-    "naive_random": {"object_name": naive_random, "args": {}},
-    "least_central": {"object_name": least_central_criminal, "args": {}},
-    "uncentral_greedy": {"object_name": uncentral_greedy, "args": {"mode": "eigen"}},
+    # "naive_random": {"object_name": naive_random, "args": {}},
+    # "least_central": {"object_name": least_central_criminal, "args": {}},
+    # "uncentral_greedy": {"object_name": uncentral_greedy, "args": {"mode": "eigen"}},
     "greedy_random": {"object_name": greedy, "args" : {"tiebreaker": "random"}},
     "greedy_eigenvector": {"object_name": greedy, "args" : {"tiebreaker": "eigenvector"}},
     "greedy_diameter": {"object_name": greedy, "args" : {"tiebreaker": "diameter"}},
     "greedy_triangles": {"object_name": greedy, "args" : {"tiebreaker": "triangles"}},
-    "max_diameter": {"object_name": max_diameter, "args": {}},
-    "balanced_diameter_1": {"object_name": balanced_diameter, "args": {"alpha": 0.1}},
-    "balanced_diameter_3": {"object_name": balanced_diameter, "args": {"alpha": 0.3}},
-    "balanced_diameter_5": {"object_name": balanced_diameter, "args": {"alpha": 0.5}},
-    "balanced_diameter_7": {"object_name": balanced_diameter, "args": {"alpha": 0.7}},
-    "balanced_diameter_9": {"object_name": balanced_diameter, "args": {"alpha": 0.9}}
+    # "max_diameter": {"object_name": max_diameter, "args": {}},
+    # "balanced_diameter_1": {"object_name": balanced_diameter, "args": {"alpha": 0.1}},
+    # "balanced_diameter_3": {"object_name": balanced_diameter, "args": {"alpha": 0.3}},
+    # "balanced_diameter_5": {"object_name": balanced_diameter, "args": {"alpha": 0.5}},
+    # "balanced_diameter_7": {"object_name": balanced_diameter, "args": {"alpha": 0.7}},
+    # "balanced_diameter_9": {"object_name": balanced_diameter, "args": {"alpha": 0.9}}
 }
 
 for strat, params in strategy_candidates.items():
