@@ -209,12 +209,12 @@ stats.reset_index(inplace=True)
 stats["group"] = stats.group.replace(group_labels)
 stats.set_index(["strategy", "group"], inplace=True)
 for strat in stats.index.unique(level=0):
-    stats.loc[(strat, slice(None), slice(None)),:].droplevel(0).style.to_latex(f"tables/{strat}.tex")
+    stats.loc[(strat, slice(None), slice(None)),:].droplevel(0).to_latex(f"tables/{strat}.tex")
 
 # build table that sorts models as rows, and reports average # sim for quantiles in cols
 agg_results = base_results.groupby(level=["strategy"]).agg("mean").astype(int)
 agg_results["unfinished"] = (base_results.groupby(level="strategy")["unfinished"].agg("mean")*100).round(2)
-agg_results.loc[:,(["caught_proportion", "eigen_proportion", "unfinished"], slice(None))].style.to_latex("tables/model_results.tex")
+agg_results.loc[:,(["caught_proportion", "eigen_proportion", "unfinished"], slice(None))].to_latex("tables/model_results.tex")
 # %%
 base_results.reset_index(inplace=True)
 # %%
