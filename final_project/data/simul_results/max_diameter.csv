@@ -1,6 +1,4 @@
-,,,caught_proportion,caught_proportion,caught_proportion,caught_proportion,eigen_proportion,eigen_proportion,eigen_proportion,eigen_proportion,unfinished
-,,,0.25,0.5,0.75,1.0,0.25,0.5,0.75,1.0,
-strategy,group,sim,,,,,,,,,
+strategy,group,sim,"('caught_proportion', 0.25)","('caught_proportion', 0.5)","('caught_proportion', 0.75)","('caught_proportion', 1.0)","('eigen_proportion', 0.25)","('eigen_proportion', 0.5)","('eigen_proportion', 0.75)","('eigen_proportion', 1.0)","('unfinished', '')"
 max_diameter,17Nov_greece,0,23,37,61,110.0,23,34,44,110.0,0
 max_diameter,17Nov_greece,1,23,47,102,139.0,19,25,49,139.0,0
 max_diameter,17Nov_greece,2,28,32,62,104.0,27,30,33,104.0,0
