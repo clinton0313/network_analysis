@@ -1,11 +1,12 @@
 # %%
 from tokenize import group
 import pandas as pd
-import pickle, os
+import pickle, os, re
 import numpy as np
 from typing import Union
 import matplotlib.pyplot as plt
 from joypy import joyplot
+from tqdm import tqdm
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 # %%
@@ -33,8 +34,8 @@ def data_compiler(directory:list) -> pd.DataFrame:
             "investigation", "graph_name", "strategy_name", "sim_run"
         ]
     )
-    for file in directory:
-        log = pd.read_pickle(f"logs/{file}")
+    for file in tqdm(directory):
+        log = pd.read_pickle(file)
         inner_df = pd.DataFrame(
             columns=[
                 "caught", "suspects", "informed", "captured_eigen", "eigen_proportion", 
@@ -57,16 +58,14 @@ def data_compiler(directory:list) -> pd.DataFrame:
             sim_run = lambda df: df.sim_run.astype(int),
             num_nodes = lambda df: df.num_nodes.astype(int),
             caught_proportion = lambda df: df.caught / df.num_nodes,
-            caught_rel = lambda df: df.caught / (df.caught + df.suspects)
         )
         [[
             "strategy_name", "graph_name", "sim_run", "investigation",
             "caught", "suspects", "informed", "num_nodes", 
-            "caught_proportion", "caught_rel", "captured_eigen", "eigen_proportion"
+            "caught_proportion", "captured_eigen", "eigen_proportion"
         ]]
     )
     # Hacky fix, but some simulations have 1 suspect despite everyone being caught
-    outer_df.loc[(outer_df.caught_proportion==1) & (outer_df.caught_rel!=1), "caught_rel"] = 1.
     outer_df.loc[(outer_df.caught_proportion==1) & (outer_df.eigen_proportion!=1), "eigen_proportion"] = 1.
     return outer_df
 
@@ -74,7 +73,7 @@ def baseline_stats(dataframe:pd.DataFrame, vars:list, thresholds: list):
     lst = []
     data = []
     tuples = []
-    for var in vars:
+    for var in tqdm(vars):
         for th in thresholds:
             lst.append(
                 qtiler(
@@ -113,23 +112,48 @@ def baseline_stats(dataframe:pd.DataFrame, vars:list, thresholds: list):
 
 
 # %%
-complete_data = [
-    x for x in os.listdir("logs") 
-    if "greedy_eigenvector" in x 
-    or "greedy_random" in x 
-    or "least_central" in x 
-    or "naive_random" in x
-]
-# build data
-main_df = data_compiler(directory=complete_data)
-# %%
-vars, thresholds = ["caught_proportion", "caught_rel", "eigen_proportion"], [0.25, 0.5, 0.75, 1.]
-base_results = baseline_stats(main_df, vars=vars, thresholds=thresholds)
 
+complete_data = []
+for path, subdirs, files in os.walk("logs/combined"):
+    for name in files:
+        complete_data.append(os.path.join(path, name))
+
+strats = [
+    "naive_random",
+    "greedy_random",
+    "greedy_eigenvector",
+    "least_central",
+    # "balanced_diameter_1", 
+    # "balanced_diameter_3", 
+    # "balanced_diameter_5", 
+    # "balanced_diameter_7", 
+    # "balanced_diameter_9",
+    # "greedy_diameter", 
+    # "max_diameter"
+]
+for strat in strats:
+    strat_files = [x for x in complete_data if strat in x]
+    main_df = data_compiler(directory=strat_files)
+    vars, thresholds = ["caught_proportion", "eigen_proportion"], [0.25, 0.5, 0.75, 1.]
+    base_results = baseline_stats(main_df, vars=vars, thresholds=thresholds)
+    base_results.to_pickle(f"data/simul_results/{strat}.pkl")
 # %%
-base_results.to_pickle("data/simul_results/first_batch.pkl")
+# Creating pickle and csv files for R
+pickles = []
+for path, subdirs, files in os.walk("data/simul_results"):
+    for name in files:
+        if ".pkl" in name:
+            pickles.append(os.path.join(path, name))
+base_results = []
+for pickl in pickles:
+    strat_results = pd.read_pickle(pickl)
+    name = re.search('\\\(.*).pkl', pickl).group(1)
+    strat_results.to_csv(f"data/simul_results/{name}.csv")
+    base_results.append(strat_results)
 # %%
-base_results = pd.read_pickle("data/simul_results/first_batch.pkl")
+# Restore main results df
+base_results = pd.concat(base_results)
+# %%
 # define basic stats
 stats = (
     base_results
@@ -167,10 +191,17 @@ group_labels = {
 }
 
 strategy_labels = {
+    "greedy_diameter": "Greedy Diameter",
+    "max_diameter": "Maximum Diameter",
     "greedy_eigenvector": "Greedy Eigenvector",
     "greedy_random": "Greedy Random",
     "least_central": "Least Central",
-    "naive_random": "Naive Random"
+    "naive_random": "Naive Random",
+    "balanced_diameter_1": "Balanced Diameter (0.1)",
+    "balanced_diameter_3": "Balanced Diameter (0.3)",
+    "balanced_diameter_5": "Balanced Diameter (0.5)",
+    "balanced_diameter_7": "Balanced Diameter (0.7)",
+    "balanced_diameter_9": "Balanced Diameter (0.9)"
 }
 
 # rename and exprot
@@ -223,24 +254,24 @@ for (strat, label) in strategy_labels.items():
         title=f"Strategy: {label}"
     )
     plt.xlabel("Number of Investigations")
-    # plt.savefig(f"figs/simulations/long_simulations/{strat}.png", dpi=300)
+    plt.savefig(f"figs/simulations/long_simulations/{strat}.png", dpi=300)
 
 
 # %%
-from PIL import Image
+# Auxiliaries
+# from PIL import Image
 
 
-for img in [x for x in os.listdir("figs") if "batch" in x]:
-    im = Image.open("figs/"+img)
-    img_name = os.path.basename("figs/"+img)
-    width, height = im.size       
-    im = im.resize((int(width/4), int(height/4)), Image.ANTIALIAS)
-    # im.save(img_name)
-    #im.save('optimized_images/' + img_name, optimize=True, quality=95)
-    im.save(img_name, optimize=True, quality=60)
+# for img in [x for x in os.listdir("figs") if "batch" in x]:
+#     im = Image.open("figs/"+img)
+#     img_name = os.path.basename("figs/"+img)
+#     width, height = im.size       
+#     im = im.resize((int(width/4), int(height/4)), Image.ANTIALIAS)
+#     # im.save(img_name)
+#     #im.save('optimized_images/' + img_name, optimize=True, quality=95)
+#     im.save(img_name, optimize=True, quality=60)
  
 
 # %%
 
-plt.savefig("testy.png", dpi=300)
 # %%
