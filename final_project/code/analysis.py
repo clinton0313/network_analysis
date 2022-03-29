@@ -144,15 +144,22 @@ for path, subdirs, files in os.walk("data/simul_results"):
     for name in files:
         if ".pkl" in name:
             pickles.append(os.path.join(path, name))
+
 base_results = []
 for pickl in pickles:
     strat_results = pd.read_pickle(pickl)
+    # strat_results.columns = strat_results.columns.to_flat_index()
     name = re.search('\\\(.*).pkl', pickl).group(1)
-    strat_results.to_csv(f"data/simul_results/{name}.csv")
+    # strat_results.to_csv(f"data/simul_results/{name}.csv")
     base_results.append(strat_results)
 # %%
 # Restore main results df
 base_results = pd.concat(base_results)
+# %% 31 march hack
+# base_results["mean_simuls"] = base_results[[("caught_proportion", 1.0)]].groupby(level=["strategy", "group"]).transform("mean")
+# base_results = base_results.loc[:, base_results.columns].div(base_results['mean_simuls'], axis=0)
+# base_results.drop(columns=["mean_simuls"], inplace=True)
+# base_results.to_csv("data/simul_results/normalized.csv")
 # %%
 # define basic stats
 stats = (
@@ -162,10 +169,10 @@ stats = (
     .loc[:, lambda df: df.columns.get_level_values(2).isin({"mean", "std"})]
 )
 stats.loc[:, lambda df: df.columns.get_level_values(2)=="mean"] = (
-    stats.loc[:, lambda df: df.columns.get_level_values(2)=="mean"].astype(int)
+    stats.loc[:, lambda df: df.columns.get_level_values(2)=="mean"].round(2)
 )
 stats.loc[:, lambda df: df.columns.get_level_values(2)=="std"] = (
-    stats.loc[:, lambda df: df.columns.get_level_values(2)=="std"].round(1)
+    stats.loc[:, lambda df: df.columns.get_level_values(2)=="std"].round(2)
 )
 stats["unfinished"] = base_results.groupby(level=["strategy", "group"])["unfinished"].sum()/500*100
 
@@ -210,7 +217,7 @@ stats["group"] = stats.group.replace(group_labels)
 stats.set_index(["strategy", "group"], inplace=True)
 for strat in stats.index.unique(level=0):
     stats.loc[(strat, slice(None), slice(None)),:].droplevel(0).to_latex(f"tables/{strat}.tex")
-
+# %%
 # build table that sorts models as rows, and reports average # sim for quantiles in cols
 agg_results = base_results.groupby(level=["strategy"]).agg("mean").astype(int)
 agg_results["unfinished"] = (base_results.groupby(level="strategy")["unfinished"].agg("mean")*100).round(2)

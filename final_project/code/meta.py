@@ -14,8 +14,8 @@ import scipy.spatial.distance
 dst = scipy.spatial.distance.euclidean
 
 #%% Dirs, colors, graphs
+os.chdir(os.environ["NETWORKS"])
 basedir = Path(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
-sns.set(rc={"axes.facecolor":"#FFF9ED","figure.facecolor":"#FFF9ED"})
 pallet = ["#682F2F", "#9E726F", "#D6B2B1", "#B9C0C9", "#9F8A78", "#F3AB60"]
 import matplotlib.colors as mcolors
 
@@ -58,7 +58,7 @@ results = []
 for set in range(3): 
     fig, ax = plt.subplots(
         6,3,
-        figsize=(32,32),        
+        figsize=(12,8),        
         sharex=False, 
         sharey=False, 
         gridspec_kw={'hspace': 0.3, 'wspace': 0.1, "width_ratios": [3,3,1]}
@@ -171,7 +171,7 @@ for set in range(3):
 
     # ax.set_title(crime_network.graph["name"], fontsize=30)
     print("Saving")
-    fig.savefig(basedir / f'batch{set}.png', bbox_inches='tight', dpi=600)
+    fig.savefig(basedir / f'batch{set}.png', bbox_inches='tight', dpi=400)
 
 
 

@@ -1,0 +1,39 @@
+\begin{table}[H]
+
+\caption{\label{tab:table1}The effect of network attribute on investigation effectiveness}
+\centering
+\begin{threeparttable}
+\begin{tabular}[t]{lccccl}
+\toprule
+\multicolumn{1}{c}{\textit{Dependent Variable:}} & \multicolumn{2}{c}{First Quantile} & \multicolumn{1}{c}{Last Quantile} \\
+\cmidrule(l{3pt}r{3pt}){1-1} \cmidrule(l{3pt}r{3pt}){2-3} \cmidrule(l{3pt}r{3pt}){4-4}
+Mean Degree & estimate & 0.15*** & 0.06*** & -0.05 & 0.19***\\
+ & std.error & (0.03) & (0.02) & (0.04) & (0.06)\\
+Logratio Eigenvector Cent. & estimate & 0.01 & 0.45*** & 0.14*** & 0.25***\\
+\addlinespace
+ & std.error & (0.02) & (0.05) & (0.02) & (0.07)\\
+Eigenvector Cent. Mean & estimate & -0.04 & 0.03 & 0.06 & 0.45***\\
+ & std.error & (0.05) & (0.05) & (0.04) & (0.09)\\
+\addlinespace
+Density & estimate & 0.20*** & 0.44*** & -0.09 & -0.25\\
+ & std.error & (0.05) & (0.04) & (0.04) & (0.07)\\
+Diameter & estimate & -0.05 & 0.06*** & -0.17 & -0.12\\
+\addlinespace
+ & std.error & (0.03) & (0.02) & (0.03) & (0.04)\\
+Triangles & estimate & -0.06 & -0.10 & -0.04 & -0.04\\
+ & std.error & (0.01) & (0.01) & (0.01) & (0.02)\\
+\addlinespace
+Mean Clustering & estimate & -0.01 & -0.09 & -0.04 & -0.02\\
+ & std.error & (0.02) & (0.01) & (0.03) & (0.03)\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[para]
+\item \footnotesize \textit{Note:} The table reports results for the number of simulations it 
+      takes to capture a fourth of a criminal network. The effects are in standard deviation units, 
+      and strategies are included as fixed effects. \ \
+      ***, **, and *
+      indicate significance at the 0.01, 0.05 and 0.10 levels, respectively, using two-tailed tests. Robust standard errors are clustered
+      at the municipality level.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
